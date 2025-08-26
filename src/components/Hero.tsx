@@ -5,7 +5,7 @@ export function Hero() {
     <section className="relative min-h-screen flex items-start justify-center pt-32 pb-16 px-4 sm:px-6 lg:px-8">
       {/* Interactive Background Element - Placeholder for future implementation */}
       <div 
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 -z-20"
         aria-label="Interactive background element for future implementation"
       >
         {/* This div will contain the interactive background element */}
