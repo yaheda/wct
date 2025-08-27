@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useClerk } from "@clerk/nextjs"
 import { 
   LayoutDashboard, 
   Monitor, 
@@ -22,6 +23,7 @@ const navigation = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const { signOut } = useClerk()
 
   return (
     <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
@@ -65,6 +67,7 @@ export function DashboardSidebar() {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start gap-x-3 text-muted-foreground hover:text-foreground"
+                  onClick={() => signOut({ redirectUrl: '/' })}
                 >
                   <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
                   Sign out

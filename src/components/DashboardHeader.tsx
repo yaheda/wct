@@ -1,9 +1,12 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Bell, Menu, Search, User } from "lucide-react"
+import { Bell, Menu, Search } from "lucide-react"
+import { UserButton, useUser } from "@clerk/nextjs"
 
 export function DashboardHeader() {
+  const { user } = useUser()
+  
   return (
     <div className="sticky top-0 z-40 lg:mx-auto lg:max-w-none">
       <div className="flex h-16 items-center gap-x-4 border-b border-border bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none">
@@ -40,18 +43,19 @@ export function DashboardHeader() {
             {/* Separator */}
             <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" aria-hidden="true" />
 
-            {/* Profile dropdown placeholder */}
-            <Button variant="ghost" size="sm" className="flex items-center gap-x-2">
-              <span className="sr-only">Open user menu</span>
-              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                <User className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <span className="hidden lg:flex lg:items-center">
-                <span className="text-sm font-semibold leading-6 text-foreground" aria-hidden="true">
-                  User Name
-                </span>
+            {/* Profile dropdown */}
+            <div className="flex items-center gap-x-2">
+              <span className="hidden lg:block text-sm font-semibold leading-6 text-foreground">
+                {user?.firstName || user?.emailAddresses[0]?.emailAddress}
               </span>
-            </Button>
+              <UserButton 
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8"
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
