@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useClerk } from "@clerk/nextjs"
+import { Logo } from "@/components/Logo"
 import { 
   LayoutDashboard, 
   Monitor, 
@@ -29,8 +30,8 @@ export function DashboardSidebar() {
     <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
       <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-border bg-background px-6 pb-4">
         <div className="flex h-16 shrink-0 items-center">
-          <Link href="/" className="text-xl font-bold text-primary">
-            Website Change Alert
+          <Link href="/">
+            <Logo size="md" />
           </Link>
         </div>
         <nav className="flex flex-1 flex-col">

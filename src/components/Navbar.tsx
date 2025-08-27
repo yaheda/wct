@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
+import { Logo } from "@/components/Logo"
 
 export function Navbar() {
   const { isSignedIn } = useUser()
@@ -13,8 +14,8 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-bold text-primary">
-              Website Change Alert
+            <Link href="/">
+              <Logo size="md" />
             </Link>
           </div>
 

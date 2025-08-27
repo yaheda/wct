@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/Logo"
 
 export function Hero() {
   return (
@@ -14,6 +15,7 @@ export function Hero() {
 
       {/* Hero Content */}
       <div className="text-center max-w-4xl mx-auto">
+        
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight mb-8">
           Simple Website Change Alert,{" "}
           <span className="text-primary">Finally</span>

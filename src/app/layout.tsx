@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Website Change Alert - Simple Website Change Monitoring",
   description: "Get notified instantly when websites change. Monitor any webpage for updates, modifications, or new content without the hassle.",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
