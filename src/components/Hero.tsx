@@ -1,7 +1,12 @@
+"use client"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/Logo"
+import { WaitlistSignup } from "@/components/WaitlistSignup"
 
 export function Hero() {
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false)
+
   return (
     <section className="relative min-h-screen flex items-start justify-center pt-32 pb-16 px-4 sm:px-6 lg:px-8">
       {/* Interactive Background Element - Placeholder for future implementation */}
@@ -22,13 +27,23 @@ export function Hero() {
         </h1>
         
         <p className="text-xl sm:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
-        Add your competitors. Get alerts when they change prices, launch features, or update their message. That's it
+        Add your competitors. Get alerts when they change prices, launch features, or update their message. That&apos;s it
         </p>
 
-        <Button size="lg" className="text-lg px-8 py-6 h-auto">
+        <Button 
+          size="lg" 
+          className="text-lg px-8 py-6 h-auto"
+          onClick={() => setIsWaitlistOpen(true)}
+        >
           Join waiting list
         </Button>
       </div>
+
+      {/* Waitlist Signup Modal */}
+      <WaitlistSignup 
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+      />
     </section>
   )
 }

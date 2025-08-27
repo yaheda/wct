@@ -1,12 +1,15 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
 import { Logo } from "@/components/Logo"
+import { WaitlistSignup } from "@/components/WaitlistSignup"
 
 export function Navbar() {
   const { isSignedIn } = useUser()
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false)
   
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -27,9 +30,13 @@ export function Navbar() {
             <Link href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Pricing
             </Link>
-            <Link href="#about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              About
-            </Link>
+            <Button 
+              variant="ghost" 
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors p-0 h-auto"
+              onClick={() => setIsWaitlistOpen(true)}
+            >
+              Join Waitlist
+            </Button>
           </div>
 
           {/* CTA Buttons */}
@@ -66,6 +73,12 @@ export function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Waitlist Signup Modal */}
+      <WaitlistSignup 
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+      />
     </nav>
   )
 }
