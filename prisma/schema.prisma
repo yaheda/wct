@@ -15,43 +15,70 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  companyName   String?
+  saasCategory  String?  // CRM, Analytics, Marketing, etc.
+  role          String?  // founder, product_manager, marketer
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-  websites  Website[]
+  companies     Company[]
   
   @@map("users")
 }
 
-model Website {
-  id          String   @id @default(cuid())
-  url         String
-  name        String
-  userId      String
-  isActive    Boolean  @default(true)
-  checkInterval Int     @default(60) // in minutes
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  domain        String
+  saasCategory  String?  // CRM, Analytics, Marketing, etc.
+  isCompetitor  Boolean  @default(true)
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  changes     WebsiteChange[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages         MonitoredPage[]
+  changes       SaasChange[]
   
-  @@map("websites")
+  @@map("companies")
 }
 
-model WebsiteChange {
-  id          String   @id @default(cuid())
-  websiteId   String
-  changeType  String   // "content", "structure", "style", etc.
-  description String?
-  oldValue    String?
-  newValue    String?
-  detectedAt  DateTime @default(now())
+model MonitoredPage {
+  id            String   @id @default(cuid())
+  companyId     String
+  url           String
+  pageType      String   // pricing, features, blog, homepage, about
+  priority      Int      @default(1) // 1=high, 2=medium, 3=low
+  isActive      Boolean  @default(true)
+  checkInterval Int      @default(1440) // in minutes, default daily
+  lastChecked   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-  website     Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  changes       SaasChange[]
   
-  @@map("website_changes")
+  @@map("monitored_pages")
+}
+
+model SaasChange {
+  id                    String   @id @default(cuid())
+  companyId             String
+  pageId                String?
+  changeType            String   // pricing, features, messaging, product, integration, other
+  changeSummary         String   // specific, actionable summary under 80 chars
+  oldValue              String?
+  newValue              String?
+  impactLevel           String   // high, medium, low
+  confidence            String   // high, medium, low
+  competitiveAnalysis   String?
+  detectedAt            DateTime @default(now())
+  
+  company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  page                  MonitoredPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  @@map("saas_changes")
 }
