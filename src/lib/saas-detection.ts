@@ -1,12 +1,20 @@
 export interface SaasPageType {
-  type: 'pricing' | 'features' | 'blog' | 'homepage' | 'about'
+  type: 'pricing' | 'features' | 'blog' | 'homepage' | 'about' | 'custom'
   url: string
   priority: 1 | 2 | 3 // 1=high, 2=medium, 3=low
+  label?: string // Custom label for the page
+  isCustom?: boolean // Whether this was manually added
 }
 
 export interface DetectedPages {
   pages: SaasPageType[]
   confidence: number
+}
+
+export interface CustomPageInput {
+  url: string
+  type: 'pricing' | 'features' | 'blog' | 'homepage' | 'about' | 'custom'
+  label?: string
 }
 
 export const SAAS_PAGE_PATTERNS = {
@@ -31,8 +39,67 @@ export function getPagePriority(pageType: string): 1 | 2 | 3 {
       return 2 // Medium priority
     case 'about':
       return 3 // Low priority
+    case 'custom':
+      return 2 // Default medium priority for custom pages
     default:
       return 2 // Default medium priority
+  }
+}
+
+export function validateCustomPageUrl(url: string, domain: string): { isValid: boolean; error?: string } {
+  if (!url.trim()) {
+    return { isValid: false, error: 'URL is required' }
+  }
+
+  try {
+    // Handle both full URLs and relative paths
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Full URL validation
+      const urlObj = new URL(url)
+      const urlDomain = urlObj.hostname
+      const cleanDomain = extractDomainFromUrl(domain)
+      
+      if (urlDomain !== cleanDomain) {
+        return { isValid: false, error: 'URL must be from the same domain' }
+      }
+    } else {
+      // Relative path validation
+      if (!url.startsWith('/')) {
+        return { isValid: false, error: 'Relative URLs must start with /' }
+      }
+      
+      // Basic path validation
+      if (url.includes('..') || url.includes('<') || url.includes('>')) {
+        return { isValid: false, error: 'Invalid characters in URL path' }
+      }
+    }
+    
+    return { isValid: true }
+  } catch {
+    return { isValid: false, error: 'Invalid URL format' }
+  }
+}
+
+export function normalizeCustomPageUrl(url: string, domain: string): string {
+  // If it's already a full URL, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // If it's a relative path, combine with domain
+  const cleanDomain = domain.startsWith('http') ? domain : `https://${domain}`
+  return `${cleanDomain.replace(/\/$/, '')}${url.startsWith('/') ? url : '/' + url}`
+}
+
+export function createCustomPage(input: CustomPageInput, domain: string): SaasPageType {
+  const normalizedUrl = normalizeCustomPageUrl(input.url, domain)
+  
+  return {
+    type: input.type,
+    url: normalizedUrl,
+    priority: getPagePriority(input.type),
+    label: input.label,
+    isCustom: true
   }
 }
 
