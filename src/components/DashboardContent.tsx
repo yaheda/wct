@@ -18,7 +18,6 @@ interface Company {
   id: string
   name: string
   domain: string
-  saasCategory: string | null
   isCompetitor: boolean
   createdAt: string
   updatedAt: string

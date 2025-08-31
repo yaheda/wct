@@ -58,7 +58,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { name, category, isActive } = body
+    const { name, isActive } = body
 
     // Check if the company exists and belongs to the user
     const existingCompany = await db.company.findFirst({
@@ -80,7 +80,6 @@ export async function PATCH(
       where: { id },
       data: {
         ...(name !== undefined && { name }),
-        ...(category !== undefined && { saasCategory: category }),
         ...(isActive !== undefined && { 
           pages: {
             updateMany: {

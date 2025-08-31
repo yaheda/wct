@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Trash2, ExternalLink, Globe, Target, Tag } from "lucide-react"
+import { Trash2, ExternalLink, Globe, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface MonitoredPage {
@@ -17,7 +17,6 @@ interface Company {
   id: string
   name: string
   domain: string
-  saasCategory: string | null
   isCompetitor: boolean
   createdAt: string
   updatedAt: string
@@ -111,12 +110,6 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
                   <h3 className="text-base font-medium text-foreground truncate">
                     {company.name}
                   </h3>
-                  {company.saasCategory && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      <Tag className="mr-1 h-3 w-3" />
-                      {company.saasCategory}
-                    </span>
-                  )}
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                     {company._count.changes} changes
                   </span>

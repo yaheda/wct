@@ -4,35 +4,27 @@ import * as React from "react"
 import { Plus, Search, Globe, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { detectSaasPages, getSuggestedCompetitors, validateSaasDomain, extractDomainFromUrl, SAAS_CATEGORIES, type SaasPageType } from "@/lib/saas-detection"
+import { detectSaasPages, validateSaasDomain, extractDomainFromUrl, type SaasPageType } from "@/lib/saas-detection"
 
 interface AddCompetitorFormProps {
   onCompetitorAdded?: () => void
-  userSaasCategory?: string
 }
 
-export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCompetitorFormProps) {
+export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
   const [formData, setFormData] = React.useState({
     domain: "",
     name: "",
-    category: userSaasCategory || "",
     selectedPages: [] as string[]
   })
   const [detectedPages, setDetectedPages] = React.useState<SaasPageType[]>([])
   const [isDetecting, setIsDetecting] = React.useState(false)
   const [detectionComplete, setDetectionComplete] = React.useState(false)
-  const [suggestedCompetitors, setSuggestedCompetitors] = React.useState<string[]>([])
   const [error, setError] = React.useState("")
 
-  const handleCategoryChange = (category: string) => {
-    setFormData(prev => ({ ...prev, category }))
-    setSuggestedCompetitors(getSuggestedCompetitors(category))
-  }
 
   const handleDomainDetection = async () => {
     if (!formData.domain.trim()) return
@@ -70,14 +62,6 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
     }
   }
 
-  const handleSuggestedCompetitor = (domain: string) => {
-    setFormData(prev => ({
-      ...prev,
-      domain,
-      name: domain.split('.')[0]
-    }))
-    handleDomainDetection()
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,10 +83,6 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
       return
     }
 
-    if (!formData.category) {
-      setError("Please select a SaaS category")
-      return
-    }
 
     if (formData.selectedPages.length === 0) {
       setError("Please select at least one page to monitor")
@@ -120,7 +100,6 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
         body: JSON.stringify({
           domain: extractDomainFromUrl(formData.domain),
           name: formData.name,
-          category: formData.category,
           selectedPages: formData.selectedPages,
         }),
       })
@@ -131,10 +110,9 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
       }
 
       // Reset form and close dialog
-      setFormData({ domain: "", name: "", category: userSaasCategory || "", selectedPages: [] })
+      setFormData({ domain: "", name: "", selectedPages: [] })
       setDetectedPages([])
       setDetectionComplete(false)
-      setSuggestedCompetitors([])
       setIsOpen(false)
       onCompetitorAdded?.()
     } catch (err) {
@@ -158,11 +136,6 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
     }))
   }
 
-  React.useEffect(() => {
-    if (userSaasCategory) {
-      handleCategoryChange(userSaasCategory)
-    }
-  }, [userSaasCategory])
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -175,42 +148,6 @@ export function AddCompetitorForm({ onCompetitorAdded, userSaasCategory }: AddCo
           <DialogTitle>Add SaaS Competitor</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-          {/* SaaS Category Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="category">SaaS Category</Label>
-            <Select
-              id="category"
-              value={formData.category}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">Select category...</option>
-              {SAAS_CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Suggested Competitors */}
-          {suggestedCompetitors.length > 0 && (
-            <div className="space-y-2">
-              <Label>Suggested Competitors</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {suggestedCompetitors.slice(0, 6).map(domain => (
-                  <button
-                    key={domain}
-                    type="button"
-                    onClick={() => handleSuggestedCompetitor(domain)}
-                    className="text-left text-sm p-2 rounded border border-border hover:bg-muted transition-colors"
-                    disabled={isLoading}
-                  >
-                    {domain}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {/* Domain Input */}
           <div className="space-y-2">
             <Label htmlFor="domain">Competitor Domain</Label>

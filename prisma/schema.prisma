@@ -19,7 +19,6 @@ model User {
   email         String   @unique
   name          String?
   companyName   String?
-  saasCategory  String?  // CRM, Analytics, Marketing, etc.
   role          String?  // founder, product_manager, marketer
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -33,7 +32,6 @@ model Company {
   id            String   @id @default(cuid())
   name          String
   domain        String
-  saasCategory  String?  // CRM, Analytics, Marketing, etc.
   isCompetitor  Boolean  @default(true)
   userId        String
   createdAt     DateTime @default(now())

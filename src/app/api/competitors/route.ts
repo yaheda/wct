@@ -50,11 +50,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { domain, name, category, selectedPages } = body
+    const { domain, name, selectedPages } = body
 
-    if (!domain || !name || !category) {
+    if (!domain || !name) {
       return NextResponse.json(
-        { error: "Domain, name, and category are required" },
+        { error: "Domain and name are required" },
         { status: 400 }
       )
     }
@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         domain: cleanDomain,
-        saasCategory: category,
         userId: user.id,
       },
     })

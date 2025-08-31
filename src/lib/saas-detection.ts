@@ -17,39 +17,7 @@ export const SAAS_PAGE_PATTERNS = {
   homepage: ['/', '/home', '/index']
 }
 
-export const SAAS_CATEGORIES = [
-  'CRM',
-  'Analytics', 
-  'Marketing',
-  'Sales',
-  'Customer Support',
-  'Project Management',
-  'Development Tools',
-  'HR & Recruiting',
-  'Finance & Accounting',
-  'E-commerce',
-  'Communication',
-  'Security',
-  'Data & Infrastructure',
-  'Design',
-  'Productivity',
-  'Other'
-]
 
-export const SUGGESTED_COMPETITORS: Record<string, string[]> = {
-  'CRM': ['salesforce.com', 'hubspot.com', 'pipedrive.com', 'zoho.com/crm', 'freshworks.com/crm'],
-  'Analytics': ['google.com/analytics', 'mixpanel.com', 'amplitude.com', 'segment.com', 'hotjar.com'],
-  'Marketing': ['mailchimp.com', 'hubspot.com/marketing', 'marketo.com', 'pardot.com', 'convertkit.com'],
-  'Sales': ['outreach.io', 'salesloft.com', 'apollo.io', 'gong.io', 'chorus.ai'],
-  'Customer Support': ['zendesk.com', 'intercom.com', 'freshdesk.com', 'helpscout.com', 'drift.com'],
-  'Project Management': ['asana.com', 'trello.com', 'monday.com', 'clickup.com', 'notion.so'],
-  'Development Tools': ['github.com', 'gitlab.com', 'atlassian.com/software/jira', 'vercel.com', 'netlify.com'],
-  'HR & Recruiting': ['workday.com', 'bamboohr.com', 'lever.co', 'greenhouse.io', 'indeed.com'],
-  'Finance & Accounting': ['quickbooks.com', 'xero.com', 'freshbooks.com', 'wave.com', 'stripe.com'],
-  'E-commerce': ['shopify.com', 'bigcommerce.com', 'woocommerce.com', 'magento.com', 'squarespace.com'],
-  'Communication': ['slack.com', 'discord.com', 'zoom.us', 'teams.microsoft.com', 'webex.com'],
-  'Security': ['okta.com', 'auth0.com', 'onelogin.com', 'duo.com', 'crowdstrike.com']
-}
 
 export function getPagePriority(pageType: string): 1 | 2 | 3 {
   switch (pageType) {
@@ -137,9 +105,6 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
   }
 }
 
-export function getSuggestedCompetitors(category: string): string[] {
-  return SUGGESTED_COMPETITORS[category] || []
-}
 
 export function extractDomainFromUrl(url: string): string {
   try {
