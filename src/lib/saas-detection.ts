@@ -56,7 +56,8 @@ export function validateCustomPageUrl(url: string, domain: string): { isValid: b
     if (url.startsWith('http://') || url.startsWith('https://')) {
       // Full URL validation
       const urlObj = new URL(url)
-      const urlDomain = urlObj.hostname
+      // Normalize URL domain by removing www. prefix
+      const urlDomain = urlObj.hostname.replace(/^www\./, '')
       const cleanDomain = extractDomainFromUrl(domain)
       
       if (urlDomain !== cleanDomain) {
@@ -176,9 +177,12 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
 export function extractDomainFromUrl(url: string): string {
   try {
     const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
-    return urlObj.hostname
+    // Normalize by removing www. prefix
+    return urlObj.hostname.replace(/^www\./, '')
   } catch {
-    return url.replace(/^https?:\/\//, '').split('/')[0]
+    // Fallback: extract domain and normalize
+    const domain = url.replace(/^https?:\/\//, '').split('/')[0]
+    return domain.replace(/^www\./, '')
   }
 }
 

@@ -32,6 +32,18 @@ export function DashboardContent() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
+  const syncUserData = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/sync-user", { method: "POST" })
+      if (!response.ok) {
+        throw new Error("Failed to sync user")
+      }
+    } catch (err) {
+      console.error("User sync failed:", err)
+      // Don't show sync errors to user - it's an internal process
+    }
+  }, [])
+
   const fetchCompanies = React.useCallback(async () => {
     try {
       setError(null)
@@ -51,8 +63,15 @@ export function DashboardContent() {
   }, [])
 
   React.useEffect(() => {
-    fetchCompanies()
-  }, [fetchCompanies])
+    const initializeDashboard = async () => {
+      // First sync user data to ensure database record exists
+      await syncUserData()
+      // Then fetch companies
+      await fetchCompanies()
+    }
+    
+    initializeDashboard()
+  }, [syncUserData, fetchCompanies])
 
   const handleCompetitorAdded = () => {
     fetchCompanies()
