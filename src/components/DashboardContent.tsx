@@ -9,7 +9,6 @@ interface MonitoredPage {
   id: string
   url: string
   pageType: string
-  priority: number
   isActive: boolean
   lastChecked: string | null
 }
@@ -84,8 +83,8 @@ export function DashboardContent() {
   const activeCompetitors = companies.length
   const totalPages = companies.reduce((acc, company) => acc + company.pages.length, 0)
   const totalChanges = companies.reduce((acc, company) => acc + company._count.changes, 0)
-  const highPriorityPages = companies.reduce((acc, company) => 
-    acc + company.pages.filter(page => page.priority === 1).length, 0
+  const activePages = companies.reduce((acc, company) => 
+    acc + company.pages.filter(page => page.isActive).length, 0
   )
 
   if (isLoading) {
@@ -196,10 +195,10 @@ export function DashboardContent() {
             <div className="absolute rounded-md bg-blue-500/10 p-3">
               <Clock className="h-6 w-6 text-blue-500" aria-hidden="true" />
             </div>
-            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">High Priority Pages</p>
+            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Active Pages</p>
           </dt>
           <dd className="ml-16 flex items-baseline">
-            <p className="text-2xl font-semibold text-foreground">{highPriorityPages}</p>
+            <p className="text-2xl font-semibold text-foreground">{activePages}</p>
           </dd>
         </div>
       </div>

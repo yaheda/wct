@@ -58,7 +58,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { name, isActive } = body
+    const { name, isMonitoringActive } = body
 
     // Check if the company exists and belongs to the user
     const existingCompany = await db.company.findFirst({
@@ -75,24 +75,27 @@ export async function PATCH(
       )
     }
 
+    // Prepare update data
+    const updateData: { name?: string } = {}
+    if (name !== undefined) {
+      updateData.name = name
+    }
+
+    // If monitoring status is being changed, update all pages
+    if (isMonitoringActive !== undefined) {
+      await db.monitoredPage.updateMany({
+        where: { companyId: id },
+        data: { isActive: isMonitoringActive }
+      })
+    }
+
     // Update the company
     const updatedCompany = await db.company.update({
       where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(isActive !== undefined && { 
-          pages: {
-            updateMany: {
-              where: { companyId: id },
-              data: { isActive }
-            }
-          }
-        }),
-      },
+      data: updateData,
       include: {
         pages: {
-          where: { isActive: true },
-          orderBy: { priority: "asc" }
+          orderBy: { createdAt: "asc" }
         },
         _count: {
           select: {

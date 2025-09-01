@@ -49,7 +49,6 @@ model MonitoredPage {
   companyId     String
   url           String
   pageType      String   // pricing, features, blog, homepage, about
-  priority      Int      @default(1) // 1=high, 2=medium, 3=low
   isActive      Boolean  @default(true)
   checkInterval Int      @default(1440) // in minutes, default daily
   lastChecked   DateTime?

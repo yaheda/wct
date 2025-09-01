@@ -18,7 +18,7 @@ export async function GET() {
       include: {
         pages: {
           where: { isActive: true },
-          orderBy: { priority: "asc" }
+          orderBy: { createdAt: "asc" }
         },
         _count: {
           select: {
@@ -104,19 +104,13 @@ export async function POST(request: NextRequest) {
     // Parse and create monitored pages
     const pagePromises = selectedPages.map(async (pageKey: string) => {
       const [pageType, pageUrl] = pageKey.split(':')
-      
-      // Determine priority based on page type
-      let priority = 2 // default medium
-      if (pageType === 'pricing' || pageType === 'features') priority = 1 // high
-      if (pageType === 'about') priority = 3 // low
 
       return db.monitoredPage.create({
         data: {
           companyId: company.id,
           url: pageUrl,
           pageType,
-          priority,
-          checkInterval: priority === 1 ? 1440 : 10080, // Daily for high priority, weekly for others
+          checkInterval: 1440, // Daily for all pages
         }
       })
     })
@@ -129,7 +123,7 @@ export async function POST(request: NextRequest) {
       include: {
         pages: {
           where: { isActive: true },
-          orderBy: { priority: "asc" }
+          orderBy: { createdAt: "asc" }
         },
         _count: {
           select: {

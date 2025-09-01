@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Trash2, ExternalLink, Globe, Target } from "lucide-react"
+import { Trash2, ExternalLink, Globe, Target, Edit, Pause, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { EditCompetitorDialog } from "./EditCompetitorDialog"
 
 interface MonitoredPage {
   id: string
   url: string
   pageType: string
-  priority: number
   isActive: boolean
   lastChecked: string | null
 }
@@ -34,6 +34,18 @@ interface CompetitorListProps {
 
 export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefresh }: CompetitorListProps) {
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [editingCompany, setEditingCompany] = React.useState<Company | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+
+  const handleEdit = (company: Company) => {
+    setEditingCompany(company)
+    setIsEditDialogOpen(true)
+  }
+
+
+  const handleCompetitorUpdated = () => {
+    onRefresh?.()
+  }
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to stop monitoring competitor "${name}"?`)) {
@@ -61,14 +73,10 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
     }
   }
 
-  const getPriorityText = (priority: number) => {
-    switch (priority) {
-      case 1: return { text: "High", color: "text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400" }
-      case 2: return { text: "Medium", color: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400" }
-      case 3: return { text: "Low", color: "text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400" }
-      default: return { text: "Medium", color: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400" }
-    }
+  const isMonitoringActive = (company: Company) => {
+    return company.pages.some(page => page.isActive)
   }
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -102,7 +110,9 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
         {companies.map((company) => (
           <div
             key={company.id}
-            className="rounded-lg border border-border bg-background p-6 transition-colors hover:bg-accent/10"
+            className={`rounded-lg border border-border bg-background p-6 transition-colors hover:bg-accent/10 ${
+              !isMonitoringActive(company) ? 'opacity-60' : ''
+            }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
@@ -113,6 +123,17 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                     {company._count.changes} changes
                   </span>
+                  {isMonitoringActive(company) ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                      <Play className="w-3 h-3 mr-1" />
+                      Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+                      <Pause className="w-3 h-3 mr-1" />
+                      Paused
+                    </span>
+                  )}
                 </div>
                 
                 <div className="mt-1 flex items-center space-x-4 text-sm text-muted-foreground mb-2">
@@ -136,17 +157,14 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
                 <div className="mt-3 space-y-1">
                   <div className="text-xs font-medium text-muted-foreground mb-1">Monitored Pages:</div>
                   <div className="flex flex-wrap gap-1">
-                    {company.pages.slice(0, 4).map((page, index) => {
-                      const priority = getPriorityText(page.priority)
-                      return (
-                        <span
-                          key={index}
-                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${priority.color}`}
-                        >
-                          {page.pageType}
-                        </span>
-                      )
-                    })}
+                    {company.pages.slice(0, 4).map((page, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                      >
+                        {page.pageType}
+                      </span>
+                    ))}
                     {company.pages.length > 4 && (
                       <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                         +{company.pages.length - 4} more
@@ -164,6 +182,15 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => handleEdit(company)}
+                  className="flex items-center space-x-1"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Edit</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleDelete(company.id, company.name)}
                   disabled={deletingId === company.id}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -176,6 +203,13 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
           </div>
         ))}
       </div>
+
+      <EditCompetitorDialog
+        company={editingCompany}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onCompetitorUpdated={handleCompetitorUpdated}
+      />
     </div>
   )
 }

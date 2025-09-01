@@ -5,7 +5,7 @@ import { Plus, Search, Globe, CheckCircle2, X, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { SimpleSelect as Select } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { detectSaasPages, validateSaasDomain, extractDomainFromUrl, validateCustomPageUrl, createCustomPage, type SaasPageType, type CustomPageInput } from "@/lib/saas-detection"
 
@@ -53,9 +53,8 @@ export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps)
       setDetectedPages(result.pages)
       setDetectionComplete(true)
       
-      // Auto-select high priority pages
+      // Auto-select all detected pages
       const autoSelected = result.pages
-        .filter(page => page.priority === 1)
         .map(page => `${page.type}:${page.url}`)
       
       setFormData(prev => ({
@@ -253,7 +252,6 @@ export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps)
                     {detectedPages.map((page, index) => {
                       const pageKey = `${page.type}:${page.url}`
                       const isSelected = formData.selectedPages.includes(pageKey)
-                      const priorityColor = page.priority === 1 ? 'text-green-600' : page.priority === 2 ? 'text-yellow-600' : 'text-gray-500'
                       
                       return (
                         <div
@@ -272,9 +270,6 @@ export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps)
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium capitalize">{page.type}</span>
-                              <span className={`text-xs ${priorityColor}`}>
-                                {page.priority === 1 ? 'High' : page.priority === 2 ? 'Medium' : 'Low'}
-                              </span>
                             </div>
                             <div className="text-xs text-muted-foreground truncate">{page.url}</div>
                           </div>
@@ -314,7 +309,6 @@ export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps)
                     {customPages.map((page, index) => {
                       const pageKey = `${page.type}:${page.url}`
                       const isSelected = formData.selectedPages.includes(pageKey)
-                      const priorityColor = page.priority === 1 ? 'text-green-600' : page.priority === 2 ? 'text-yellow-600' : 'text-gray-500'
                       
                       return (
                         <div
@@ -333,9 +327,6 @@ export function AddCompetitorForm({ onCompetitorAdded }: AddCompetitorFormProps)
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium capitalize">{page.label || page.type}</span>
-                              <span className={`text-xs ${priorityColor}`}>
-                                {page.priority === 1 ? 'High' : page.priority === 2 ? 'Medium' : 'Low'}
-                              </span>
                               <span className="text-xs text-muted-foreground">(Custom)</span>
                             </div>
                             <div className="text-xs text-muted-foreground truncate">{page.url}</div>

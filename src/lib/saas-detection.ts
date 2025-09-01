@@ -1,7 +1,6 @@
 export interface SaasPageType {
   type: 'pricing' | 'features' | 'blog' | 'homepage' | 'about' | 'custom'
   url: string
-  priority: 1 | 2 | 3 // 1=high, 2=medium, 3=low
   label?: string // Custom label for the page
   isCustom?: boolean // Whether this was manually added
 }
@@ -27,24 +26,6 @@ export const SAAS_PAGE_PATTERNS = {
 
 
 
-export function getPagePriority(pageType: string): 1 | 2 | 3 {
-  switch (pageType) {
-    case 'pricing':
-      return 1 // High priority
-    case 'features':
-      return 1 // High priority
-    case 'homepage':
-      return 2 // Medium priority
-    case 'blog':
-      return 2 // Medium priority
-    case 'about':
-      return 3 // Low priority
-    case 'custom':
-      return 2 // Default medium priority for custom pages
-    default:
-      return 2 // Default medium priority
-  }
-}
 
 export function validateCustomPageUrl(url: string, domain: string): { isValid: boolean; error?: string } {
   if (!url.trim()) {
@@ -98,7 +79,6 @@ export function createCustomPage(input: CustomPageInput, domain: string): SaasPa
   return {
     type: input.type,
     url: normalizedUrl,
-    priority: getPagePriority(input.type),
     label: input.label,
     isCustom: true
   }
@@ -141,8 +121,7 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
         if (result.exists) {
           foundPages.push({
             type: pageType as SaasPageType['type'],
-            url: urlToTest,
-            priority: getPagePriority(pageType)
+            url: urlToTest
           })
           break // Found one for this page type, move to next type
         }
@@ -157,8 +136,7 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
   if (!foundPages.some(p => p.type === 'homepage')) {
     foundPages.push({
       type: 'homepage',
-      url: domain,
-      priority: getPagePriority('homepage')
+      url: domain
     })
   }
 
@@ -168,7 +146,7 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
   const confidence = Math.round((foundExpectedPages.length / expectedPageTypes.length) * 100)
 
   return {
-    pages: foundPages.sort((a, b) => a.priority - b.priority), // Sort by priority
+    pages: foundPages, // Return pages in detection order
     confidence
   }
 }
