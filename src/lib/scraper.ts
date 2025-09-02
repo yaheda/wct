@@ -1,4 +1,6 @@
 import { chromium, firefox, webkit, Browser, Page } from 'playwright'
+// @ts-expect-error - robots-parser doesn't have TypeScript definitions
+import robotsParser from 'robots-parser'
 
 export interface ScrapingResult {
   url: string
@@ -13,7 +15,10 @@ export interface ScrapingResult {
     userAgent: string
     browserName: string
     viewport: { width: number; height: number }
+    robotsCompliant: boolean
+    crawlDelay: number
   }
+  robotsBlocked?: boolean
   error?: string
 }
 
@@ -27,6 +32,15 @@ export interface ScrapingOptions {
   mobile?: boolean
   screenshot?: boolean
   bypassCSP?: boolean
+  respectRobots?: boolean
+  robotsTimeout?: number
+  ignoreRobots?: boolean
+}
+
+interface RobotsCache {
+  robots: unknown
+  fetchedAt: Date
+  crawlDelay: number
 }
 
 class PlaywrightScraper {
@@ -35,6 +49,8 @@ class PlaywrightScraper {
   private requestCounts = new Map<string, number>()
   private lastRequestTimes = new Map<string, number>()
   private readonly MIN_REQUEST_INTERVAL = 5000 // 5 seconds between requests per domain
+  private robotsCache = new Map<string, RobotsCache>()
+  private readonly ROBOTS_CACHE_DURATION = 1000 * 60 * 60 // 1 hour
 
   async initialize(browserType: 'chromium' | 'firefox' | 'webkit' = 'chromium') {
     if (this.isInitialized && this.browser) {
@@ -104,14 +120,114 @@ class PlaywrightScraper {
     }
   }
 
-  private async enforceRateLimit(domain: string) {
+  private async fetchRobotsTxt(domain: string, options: ScrapingOptions = {}): Promise<RobotsCache> {
+    const robotsUrl = `https://${domain}/robots.txt`
+    const timeout = options.robotsTimeout || 5000
+    
+    try {
+      const response = await fetch(robotsUrl, {
+        signal: AbortSignal.timeout(timeout),
+        headers: {
+          'User-Agent': options.userAgent || 'Mozilla/5.0 (compatible; SaaS-Monitor-Bot/1.0)'
+        }
+      })
+
+      if (!response.ok) {
+        // No robots.txt found, create permissive default
+        const robots = robotsParser(robotsUrl, '')
+        return {
+          robots,
+          fetchedAt: new Date(),
+          crawlDelay: 0
+        }
+      }
+
+      const robotsText = await response.text()
+      const robots = robotsParser(robotsUrl, robotsText)
+      
+      // Extract crawl delay for our user agent or wildcard
+      const userAgent = options.userAgent || '*'
+      const crawlDelay = robots.getCrawlDelay(userAgent) || 0
+
+      return {
+        robots,
+        fetchedAt: new Date(),
+        crawlDelay: crawlDelay * 1000 // Convert to milliseconds
+      }
+
+    } catch (error) {
+      console.warn(`Failed to fetch robots.txt for ${domain}:`, error)
+      // Create permissive default on error
+      const robots = robotsParser(robotsUrl, '')
+      return {
+        robots,
+        fetchedAt: new Date(),
+        crawlDelay: 0
+      }
+    }
+  }
+
+  private async getRobots(domain: string, options: ScrapingOptions = {}): Promise<RobotsCache> {
+    const cached = this.robotsCache.get(domain)
+    
+    // Check if cache is still valid
+    if (cached && (Date.now() - cached.fetchedAt.getTime()) < this.ROBOTS_CACHE_DURATION) {
+      return cached
+    }
+
+    // Fetch fresh robots.txt
+    const robotsCache = await this.fetchRobotsTxt(domain, options)
+    this.robotsCache.set(domain, robotsCache)
+    return robotsCache
+  }
+
+  private async checkRobotsPermission(url: string, options: ScrapingOptions = {}): Promise<{
+    allowed: boolean
+    crawlDelay: number
+    robotsCompliant: boolean
+  }> {
+    // Skip robots.txt check if disabled
+    if (options.ignoreRobots || options.respectRobots === false) {
+      return {
+        allowed: true,
+        crawlDelay: 0,
+        robotsCompliant: false
+      }
+    }
+
+    try {
+      const domain = this.getDomain(url)
+      const robotsCache = await this.getRobots(domain, options)
+      const userAgent = options.userAgent || '*'
+      
+      const allowed = robotsCache.robots.isAllowed(url, userAgent)
+      const crawlDelay = Math.max(robotsCache.crawlDelay, this.MIN_REQUEST_INTERVAL)
+
+      return {
+        allowed,
+        crawlDelay,
+        robotsCompliant: true
+      }
+    } catch (error) {
+      console.warn(`Error checking robots.txt for ${url}:`, error)
+      // Default to allowed with standard rate limiting on error
+      return {
+        allowed: true,
+        crawlDelay: this.MIN_REQUEST_INTERVAL,
+        robotsCompliant: false
+      }
+    }
+  }
+
+  private async enforceRateLimit(domain: string, crawlDelay?: number) {
     const now = Date.now()
     const lastRequest = this.lastRequestTimes.get(domain) || 0
+    const effectiveDelay = Math.max(crawlDelay || 0, this.MIN_REQUEST_INTERVAL)
     const timeSinceLastRequest = now - lastRequest
 
-    if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
-      const waitTime = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest
-      console.log(`Rate limiting: waiting ${waitTime}ms for domain ${domain}`)
+    if (timeSinceLastRequest < effectiveDelay) {
+      const waitTime = effectiveDelay - timeSinceLastRequest
+      console.log(`Rate limiting: waiting ${waitTime}ms for domain ${domain} (robots.txt: ${crawlDelay ? 'yes' : 'no'})`)
       await new Promise(resolve => setTimeout(resolve, waitTime))
     }
 
@@ -122,8 +238,36 @@ class PlaywrightScraper {
   async scrapePage(url: string, options: ScrapingOptions = {}): Promise<ScrapingResult> {
     await this.initialize(options.browserType || 'chromium')
 
+    // Check robots.txt permission first (defaults to respectRobots: true)
+    const robotsCheck = await this.checkRobotsPermission(url, { 
+      respectRobots: true, 
+      ...options 
+    })
+
+    // If robots.txt disallows this URL, return blocked result
+    if (!robotsCheck.allowed) {
+      return {
+        url,
+        content: '',
+        textContent: '',
+        robotsBlocked: true,
+        metadata: {
+          title: '',
+          statusCode: 0,
+          loadTime: 0,
+          timestamp: new Date(),
+          userAgent: options.userAgent || '',
+          browserName: options.browserType || 'chromium',
+          viewport: options.viewport || { width: 1920, height: 1080 },
+          robotsCompliant: robotsCheck.robotsCompliant,
+          crawlDelay: robotsCheck.crawlDelay,
+        },
+        error: 'URL blocked by robots.txt',
+      }
+    }
+
     const domain = this.getDomain(url)
-    await this.enforceRateLimit(domain)
+    await this.enforceRateLimit(domain, robotsCheck.crawlDelay)
 
     // Create a fresh context for each scrape to avoid state issues
     const context = await this.createContext(options)
@@ -206,6 +350,8 @@ class PlaywrightScraper {
           userAgent: options.userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           browserName: options.browserType || 'chromium',
           viewport,
+          robotsCompliant: robotsCheck.robotsCompliant,
+          crawlDelay: robotsCheck.crawlDelay,
         },
       }
 
@@ -224,6 +370,8 @@ class PlaywrightScraper {
           userAgent: options.userAgent || '',
           browserName: options.browserType || 'chromium',
           viewport: options.viewport || { width: 1920, height: 1080 },
+          robotsCompliant: robotsCheck.robotsCompliant,
+          crawlDelay: robotsCheck.crawlDelay,
         },
         error: error instanceof Error ? error.message : 'Unknown error',
       }
@@ -257,6 +405,8 @@ class PlaywrightScraper {
             userAgent: options.userAgent || '',
             browserName: options.browserType || 'chromium',
             viewport: options.viewport || { width: 1920, height: 1080 },
+            robotsCompliant: false,
+            crawlDelay: 0,
           },
           error: error instanceof Error ? error.message : 'Unknown error',
         })

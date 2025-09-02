@@ -23,7 +23,7 @@ export interface LLMProvider {
 class MockLLMProvider implements LLMProvider {
   name = 'mock'
 
-  async analyzeChange(prompt: string): Promise<any> {
+  async analyzeChange(prompt: string): Promise<Record<string, unknown>> {
     // Simulate LLM processing delay
     await new Promise(resolve => setTimeout(resolve, 500))
 
@@ -175,7 +175,7 @@ Respond with JSON:
       const llmResponse = await this.llmProvider.analyzeChange(prompt)
 
       // Parse LLM response
-      let analysisResult: any
+      let analysisResult: Record<string, unknown>
       if (typeof llmResponse === 'string') {
         try {
           analysisResult = JSON.parse(llmResponse)
@@ -346,7 +346,7 @@ export class OpenAIProvider implements LLMProvider {
     this.apiKey = apiKey
   }
 
-  async analyzeChange(prompt: string): Promise<any> {
+  async analyzeChange(prompt: string): Promise<Record<string, unknown>> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
