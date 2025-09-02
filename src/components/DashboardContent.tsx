@@ -4,6 +4,8 @@ import * as React from "react"
 import { Monitor, Bell, TrendingUp, Clock } from "lucide-react"
 import { AddCompetitorForm } from "@/components/AddCompetitorForm"
 import { CompetitorList } from "@/components/CompetitorList"
+import { ChangesDashboard } from "@/components/ChangesDashboard"
+import { ChangeDetectionPanel } from "@/components/ChangeDetectionPanel"
 
 interface MonitoredPage {
   id: string
@@ -30,6 +32,7 @@ export function DashboardContent() {
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState('overview')
 
   const syncUserData = React.useCallback(async () => {
     try {
@@ -138,96 +141,131 @@ export function DashboardContent() {
     )
   }
 
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: Monitor },
+    { id: 'changes', name: 'Changes', icon: TrendingUp },
+    { id: 'detection', name: 'Detection', icon: Bell }
+  ]
+
   return (
     <div className="space-y-8">
-      {/* Welcome section */}
+      {/* Welcome section with tabs */}
       <div className="border-b border-border pb-5">
         <h1 className="text-2xl font-bold leading-7 text-foreground sm:truncate sm:text-3xl sm:tracking-tight">
           Competitive Intelligence
         </h1>
-        <div className="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
-          <div className="mt-2 flex items-center text-sm text-muted-foreground">
-            Welcome back! Here&apos;s your competitive intelligence overview.
+        <div className="mt-4">
+          <nav className="flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {tab.name}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
+              <dt>
+                <div className="absolute rounded-md bg-primary/10 p-3">
+                  <Monitor className="h-6 w-6 text-primary" aria-hidden="true" />
+                </div>
+                <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Tracked Competitors</p>
+              </dt>
+              <dd className="ml-16 flex items-baseline">
+                <p className="text-2xl font-semibold text-foreground">{activeCompetitors}</p>
+              </dd>
+            </div>
+
+            <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
+              <dt>
+                <div className="absolute rounded-md bg-orange-500/10 p-3">
+                  <Bell className="h-6 w-6 text-orange-500" aria-hidden="true" />
+                </div>
+                <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Monitored Pages</p>
+              </dt>
+              <dd className="ml-16 flex items-baseline">
+                <p className="text-2xl font-semibold text-foreground">{totalPages}</p>
+              </dd>
+            </div>
+
+            <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
+              <dt>
+                <div className="absolute rounded-md bg-green-500/10 p-3">
+                  <TrendingUp className="h-6 w-6 text-green-500" aria-hidden="true" />
+                </div>
+                <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Changes Detected</p>
+              </dt>
+              <dd className="ml-16 flex items-baseline">
+                <p className="text-2xl font-semibold text-foreground">{totalChanges}</p>
+              </dd>
+            </div>
+
+            <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
+              <dt>
+                <div className="absolute rounded-md bg-blue-500/10 p-3">
+                  <Clock className="h-6 w-6 text-blue-500" aria-hidden="true" />
+                </div>
+                <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Active Pages</p>
+              </dt>
+              <dd className="ml-16 flex items-baseline">
+                <p className="text-2xl font-semibold text-foreground">{activePages}</p>
+              </dd>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
-          <dt>
-            <div className="absolute rounded-md bg-primary/10 p-3">
-              <Monitor className="h-6 w-6 text-primary" aria-hidden="true" />
-            </div>
-            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Tracked Competitors</p>
-          </dt>
-          <dd className="ml-16 flex items-baseline">
-            <p className="text-2xl font-semibold text-foreground">{activeCompetitors}</p>
-          </dd>
-        </div>
-
-        <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
-          <dt>
-            <div className="absolute rounded-md bg-orange-500/10 p-3">
-              <Bell className="h-6 w-6 text-orange-500" aria-hidden="true" />
-            </div>
-            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Monitored Pages</p>
-          </dt>
-          <dd className="ml-16 flex items-baseline">
-            <p className="text-2xl font-semibold text-foreground">{totalPages}</p>
-          </dd>
-        </div>
-
-        <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
-          <dt>
-            <div className="absolute rounded-md bg-green-500/10 p-3">
-              <TrendingUp className="h-6 w-6 text-green-500" aria-hidden="true" />
-            </div>
-            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Changes Detected</p>
-          </dt>
-          <dd className="ml-16 flex items-baseline">
-            <p className="text-2xl font-semibold text-foreground">{totalChanges}</p>
-          </dd>
-        </div>
-
-        <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
-          <dt>
-            <div className="absolute rounded-md bg-blue-500/10 p-3">
-              <Clock className="h-6 w-6 text-blue-500" aria-hidden="true" />
-            </div>
-            <p className="ml-16 truncate text-sm font-medium text-muted-foreground">Active Pages</p>
-          </dt>
-          <dd className="ml-16 flex items-baseline">
-            <p className="text-2xl font-semibold text-foreground">{activePages}</p>
-          </dd>
-        </div>
-      </div>
-
-      {/* Add Website Form and Website List */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium text-foreground">Competitor Intelligence</h2>
-        <AddCompetitorForm onCompetitorAdded={handleCompetitorAdded} />
-      </div>
-
-      <CompetitorList 
-        websites={companies}
-        onWebsiteDeleted={handleCompetitorDeleted}
-        onRefresh={fetchCompanies}
-      />
-
-      {/* Recent Activity */}
-      <div className="space-y-6">
-        <h2 className="text-lg font-medium text-foreground">Recent Activity</h2>
-        <div className="rounded-lg border border-border bg-background p-6">
-          <div className="text-center">
-            <Clock className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h3 className="mt-2 text-sm font-medium text-foreground">No activity yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Competitor changes and insights will appear here once you add your first competitor.
-            </p>
+          {/* Add Website Form and Website List */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-medium text-foreground">Competitor Intelligence</h2>
+            <AddCompetitorForm onCompetitorAdded={handleCompetitorAdded} />
           </div>
-        </div>
-      </div>
+
+          <CompetitorList 
+            websites={companies}
+            onWebsiteDeleted={handleCompetitorDeleted}
+            onRefresh={fetchCompanies}
+          />
+
+          {/* Recent Activity */}
+          <div className="space-y-6">
+            <h2 className="text-lg font-medium text-foreground">Recent Activity</h2>
+            <div className="rounded-lg border border-border bg-background p-6">
+              <div className="text-center">
+                <Clock className="mx-auto h-8 w-8 text-muted-foreground" />
+                <h3 className="mt-2 text-sm font-medium text-foreground">No activity yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Competitor changes and insights will appear here once you add your first competitor.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'changes' && (
+        <ChangesDashboard />
+      )}
+
+      {activeTab === 'detection' && (
+        <ChangeDetectionPanel />
+      )}
     </div>
   )
 }

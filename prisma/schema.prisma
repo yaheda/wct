@@ -57,6 +57,8 @@ model MonitoredPage {
   
   company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   changes       SaasChange[]
+  snapshots     PageSnapshot[]
+  detectionRuns ChangeDetectionRun[]
   
   @@map("monitored_pages")
 }
@@ -65,6 +67,7 @@ model SaasChange {
   id                    String   @id @default(cuid())
   companyId             String
   pageId                String?
+  detectionRunId        String?
   changeType            String   // pricing, features, messaging, product, integration, other
   changeSummary         String   // specific, actionable summary under 80 chars
   oldValue              String?
@@ -76,6 +79,55 @@ model SaasChange {
   
   company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   page                  MonitoredPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  detectionRun          ChangeDetectionRun? @relation(fields: [detectionRunId], references: [id], onDelete: SetNull)
   
   @@map("saas_changes")
+}
+
+model PageSnapshot {
+  id            String   @id @default(cuid())
+  pageId        String
+  content       String   // HTML content of the page
+  contentHash   String   // SHA256 hash for quick comparison
+  textContent   String?  // Cleaned text content for LLM processing
+  metadata      Json?    // Store extracted metadata (pricing, features, etc.)
+  status        String   @default("active") // active, archived
+  createdAt     DateTime @default(now())
+  
+  page          MonitoredPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  @@index([pageId, createdAt])
+  @@map("page_snapshots")
+}
+
+model ChangeDetectionRun {
+  id            String   @id @default(cuid())
+  pageId        String?
+  runType       String   // scheduled, manual, test
+  status        String   // pending, running, completed, failed
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  errorMessage  String?
+  changesFound  Int      @default(0)
+  metadata      Json?    // Store run configuration and results
+  
+  page          MonitoredPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  changes       SaasChange[]
+  
+  @@map("change_detection_runs")
+}
+
+model TestScenario {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  pageType         String   // pricing, features, blog, homepage, about
+  beforeContent    String   // Mock content representing "before" state
+  afterContent     String   // Mock content representing "after" state  
+  expectedChanges  Json     // Expected changes that should be detected
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@map("test_scenarios")
 }
