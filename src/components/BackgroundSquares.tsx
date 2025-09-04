@@ -35,7 +35,7 @@ export function BackgroundSquares() {
           speed: Math.random() * 0.5 + 0.2,
           vx: (Math.random() - 0.5) * 0.02,
           vy: (Math.random() - 0.5) * 0.02,
-          rotationSpeed: (Math.random() - 0.5) * 0.5,
+          rotationSpeed: (Math.random() - 0.5) * 5.5,
         })
       }
       setSquares(newSquares)

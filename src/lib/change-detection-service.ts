@@ -95,7 +95,7 @@ class ChangeDetectionService {
               textContent: scrapingResult.textContent,
               metadata: {
                 ...scrapingResult.metadata,
-                extractedData: newProcessedContent.extractedData
+                extractedData: JSON.parse(JSON.stringify(newProcessedContent.extractedData))
               }
             }
           })
@@ -189,7 +189,7 @@ class ChangeDetectionService {
         runType: options.runType,
         status: 'running',
         metadata: {
-          options,
+          options: JSON.parse(JSON.stringify(options)),
           startedAt: new Date().toISOString()
         }
       }
@@ -213,7 +213,7 @@ class ChangeDetectionService {
         errorMessage: errors.length > 0 ? errors.join('; ') : null,
         metadata: {
           completedAt: new Date().toISOString(),
-          errors
+          errors: JSON.parse(JSON.stringify(errors))
         }
       }
     })

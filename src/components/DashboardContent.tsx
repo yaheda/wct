@@ -4,8 +4,6 @@ import * as React from "react"
 import { Monitor, Bell, TrendingUp, Clock } from "lucide-react"
 import { AddCompetitorForm } from "@/components/AddCompetitorForm"
 import { CompetitorList } from "@/components/CompetitorList"
-import { ChangesDashboard } from "@/components/ChangesDashboard"
-import { ChangeDetectionPanel } from "@/components/ChangeDetectionPanel"
 
 interface MonitoredPage {
   id: string
@@ -32,7 +30,6 @@ export function DashboardContent() {
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [activeTab, setActiveTab] = React.useState('overview')
 
   const syncUserData = React.useCallback(async () => {
     try {
@@ -141,47 +138,17 @@ export function DashboardContent() {
     )
   }
 
-  const tabs = [
-    { id: 'overview', name: 'Overview', icon: Monitor },
-    { id: 'changes', name: 'Changes', icon: TrendingUp },
-    { id: 'detection', name: 'Detection', icon: Bell }
-  ]
-
   return (
     <div className="space-y-8">
-      {/* Welcome section with tabs */}
+      {/* Welcome section */}
       <div className="border-b border-border pb-5">
         <h1 className="text-2xl font-bold leading-7 text-foreground sm:truncate sm:text-3xl sm:tracking-tight">
           Competitive Intelligence
         </h1>
-        <div className="mt-4">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 mr-2" />
-                  {tab.name}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="relative overflow-hidden rounded-lg border border-border bg-background p-6">
               <dt>
                 <div className="absolute rounded-md bg-primary/10 p-3">
@@ -256,16 +223,6 @@ export function DashboardContent() {
               </div>
             </div>
           </div>
-        </>
-      )}
-
-      {activeTab === 'changes' && (
-        <ChangesDashboard />
-      )}
-
-      {activeTab === 'detection' && (
-        <ChangeDetectionPanel />
-      )}
-    </div>
-  )
+        </div>
+    )
 }

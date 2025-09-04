@@ -1,4 +1,5 @@
 import { ProcessedContent } from './content-processor'
+import { LLMProviderFactory, LLMProviderConfig } from './llm-providers'
 
 export interface ChangeDetectionResult {
   hasSignificantChange: boolean
@@ -12,6 +13,7 @@ export interface ChangeDetectionResult {
   confidence: 'high' | 'medium' | 'low'
   competitiveAnalysis?: string
   rawLLMResponse?: Record<string, unknown>
+  llmProvider?: string
 }
 
 export interface LLMProvider {
@@ -19,68 +21,48 @@ export interface LLMProvider {
   analyzeChange(prompt: string): Promise<Record<string, unknown>>
 }
 
-// Mock LLM Provider for testing
-class MockLLMProvider implements LLMProvider {
-  name = 'mock'
-
-  async analyzeChange(prompt: string): Promise<Record<string, unknown>> {
-    // Simulate LLM processing delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Basic mock responses based on content
-    if (prompt.includes('$') && prompt.includes('price')) {
-      return {
-        hasSignificantChange: true,
-        changeType: 'pricing',
-        changeSummary: 'Pricing plan updated with new rates',
-        details: {
-          oldValue: '$99/month',
-          newValue: '$79/month',
-          impactLevel: 'high'
-        },
-        confidence: 'high',
-        competitiveAnalysis: 'Competitor has reduced pricing by 20%, potentially increasing market competitiveness'
-      }
-    }
-
-    if (prompt.includes('feature') || prompt.includes('capability')) {
-      return {
-        hasSignificantChange: true,
-        changeType: 'features',
-        changeSummary: 'New features announced in product offering',
-        details: {
-          impactLevel: 'medium'
-        },
-        confidence: 'medium'
-      }
-    }
-
-    return {
-      hasSignificantChange: false,
-      changeType: 'other',
-      changeSummary: 'Minor content updates detected',
-      details: {
-        impactLevel: 'low'
-      },
-      confidence: 'low'
-    }
-  }
+export interface TestModeOptions {
+  enabled: boolean
+  llmProvider?: Partial<LLMProviderConfig>
+  useRealLLM?: boolean
 }
+
 
 class ChangeDetector {
   private llmProvider: LLMProvider
-  private testMode: boolean = false
+  private testModeOptions: TestModeOptions = { enabled: false }
 
   constructor(llmProvider?: LLMProvider) {
-    this.llmProvider = llmProvider || new MockLLMProvider()
+    this.llmProvider = llmProvider || LLMProviderFactory.createProvider()
   }
 
-  setTestMode(enabled: boolean) {
-    this.testMode = enabled
+  setTestMode(enabled: boolean, options?: Omit<TestModeOptions, 'enabled'>) {
+    this.testModeOptions = {
+      enabled,
+      ...options
+    }
+    
+    // If test mode is enabled and options specify using real LLM or custom provider
+    if (enabled && (options?.useRealLLM || options?.llmProvider)) {
+      try {
+        const provider = LLMProviderFactory.createProvider(options?.llmProvider)
+        this.llmProvider = provider
+        console.log(`Test mode enabled with ${provider.name} provider`)
+      } catch (error) {
+        console.warn(`Failed to create test LLM provider, falling back to default:`, error)
+      }
+    } else if (enabled && !options?.useRealLLM) {
+      // Use enhanced mock provider for traditional test mode
+      this.llmProvider = LLMProviderFactory.createProvider({ provider: 'mock' })
+    }
   }
 
   setLLMProvider(provider: LLMProvider) {
     this.llmProvider = provider
+  }
+
+  getTestModeOptions(): TestModeOptions {
+    return this.testModeOptions
   }
 
   private generateSaaSPrompt(
@@ -194,17 +176,18 @@ Respond with JSON:
       }
 
       return {
-        hasSignificantChange: analysisResult.hasSignificantChange || false,
-        changeType: analysisResult.changeType || 'other',
-        changeSummary: analysisResult.changeSummary || 'Changes detected',
+        hasSignificantChange: Boolean(analysisResult.hasSignificantChange),
+        changeType: (analysisResult.changeType as ChangeDetectionResult['changeType']) || 'other',
+        changeSummary: String(analysisResult.changeSummary || 'Changes detected'),
         details: {
-          oldValue: analysisResult.details?.oldValue,
-          newValue: analysisResult.details?.newValue,
-          impactLevel: analysisResult.details?.impactLevel || 'medium'
+          oldValue: (analysisResult.details as any)?.oldValue,
+          newValue: (analysisResult.details as any)?.newValue,
+          impactLevel: ((analysisResult.details as any)?.impactLevel) || 'medium'
         },
-        confidence: analysisResult.confidence || 'medium',
-        competitiveAnalysis: analysisResult.competitiveAnalysis,
-        rawLLMResponse: this.testMode ? llmResponse : undefined
+        confidence: (analysisResult.confidence as ChangeDetectionResult['confidence']) || 'medium',
+        competitiveAnalysis: analysisResult.competitiveAnalysis as string,
+        rawLLMResponse: this.testModeOptions.enabled ? llmResponse : undefined,
+        llmProvider: this.testModeOptions.enabled ? this.llmProvider.name : undefined
       }
 
     } catch (error) {
@@ -336,51 +319,26 @@ Respond with JSON:
 
 export const changeDetector = new ChangeDetector()
 
-// Example of how to integrate with OpenAI (when needed)
-export class OpenAIProvider implements LLMProvider {
-  name = 'openai'
-  private apiKey: string
-  private model: string = 'gpt-4o-mini'
-
-  constructor(apiKey: string) {
-    this.apiKey = apiKey
-  }
-
-  async analyzeChange(prompt: string): Promise<Record<string, unknown>> {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a SaaS competitive intelligence expert. Respond only with valid JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 500
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`)
+// Utility functions for testing LLM providers
+export async function testLLMProvider(config?: Partial<LLMProviderConfig>): Promise<{
+  success: boolean
+  providerName: string
+  error?: string
+  responseTime?: number
+}> {
+  try {
+    const provider = LLMProviderFactory.createProvider(config)
+    const result = await LLMProviderFactory.testProvider(provider)
+    
+    return {
+      ...result,
+      providerName: provider.name
     }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content
-
-    if (!content) {
-      throw new Error('No response from OpenAI')
+  } catch (error) {
+    return {
+      success: false,
+      providerName: 'unknown',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
-
-    return JSON.parse(content)
   }
 }

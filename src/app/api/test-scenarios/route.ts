@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { testFramework } from '@/lib/test-scenarios'
+import { testFramework, TestRunOptions } from '@/lib/test-scenarios'
+import { testLLMProvider } from '@/lib/change-detector'
 
 export async function GET() {
   try {
@@ -39,19 +40,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { action, scenarioId } = body
+    const { action, scenarioId, options = {} } = body
+
+    // Parse test run options
+    const testOptions: TestRunOptions = {
+      useRealLLM: options.useRealLLM || false,
+      llmProvider: options.llmProvider,
+      scenarios: options.scenarios,
+      verbose: options.verbose || false
+    }
+
+    if (action === 'test-llm') {
+      // Test LLM provider connection
+      const testResult = await testLLMProvider(testOptions.llmProvider)
+      return NextResponse.json(testResult)
+    }
 
     if (action === 'run' && scenarioId) {
       // Run specific test scenario
-      const result = await testFramework.runTestScenario(scenarioId)
+      const result = await testFramework.runTestScenario(scenarioId, testOptions)
       return NextResponse.json(result)
     }
 
     if (action === 'run-all') {
       // Run all test scenarios
-      const results = await testFramework.runAllTests()
+      const results = await testFramework.runAllTests(testOptions)
       const report = testFramework.generateTestReport(results)
-      return NextResponse.json(report)
+      return NextResponse.json({
+        ...report,
+        testOptions
+      })
+    }
+
+    if (action === 'run-comparative') {
+      // Run comparative tests (mock vs real LLM)
+      const comparison = await testFramework.runComparativeTests({
+        scenarios: testOptions.scenarios,
+        verbose: testOptions.verbose
+      })
+      return NextResponse.json(comparison)
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -59,7 +86,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Test scenarios POST API error:', error)
     return NextResponse.json(
-      { error: 'Failed to execute test scenario' },
+      { error: 'Failed to execute test scenario', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

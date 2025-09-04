@@ -4,6 +4,7 @@ import * as React from "react"
 import { Play, Square, TestTube, Activity, AlertCircle, CheckCircle2, Clock, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { TestResult } from "@/lib/test-scenarios"
 
 interface SystemHealth {
   totalActivePages: number
@@ -36,12 +37,24 @@ interface DetectionRun {
   timestamp?: string
 }
 
+interface TestReport {
+  summary: {
+    total: number
+    passed: number
+    failed: number
+    averageAccuracy: number
+    testMode: string
+    llmProviders: string[]
+  }
+  details: TestResult[]
+}
+
 export function ChangeDetectionPanel() {
   const [systemHealth, setSystemHealth] = React.useState<SystemHealth | null>(null)
   const [isRunning, setIsRunning] = React.useState(false)
   const [lastRun, setLastRun] = React.useState<DetectionRun | null>(null)
   const [isTestDialogOpen, setIsTestDialogOpen] = React.useState(false)
-  const [testResults, setTestResults] = React.useState<Record<string, unknown> | null>(null)
+  const [testResults, setTestResults] = React.useState<TestReport | null>(null)
 
   // Fetch system health on component mount
   React.useEffect(() => {
@@ -332,9 +345,9 @@ export function ChangeDetectionPanel() {
 
               {/* Individual Results */}
               <div className="space-y-2">
-                {Array.isArray(testResults.details) && testResults.details.map((result: Record<string, unknown>, index: number) => (
+                {Array.isArray(testResults.details) && testResults.details.map((result, index) => (
                   <div
-                    key={result.scenarioId as string || index}
+                    key={result.scenarioId || index}
                     className={`p-4 rounded-lg border ${
                       result.passed 
                         ? 'border-green-200 bg-green-50 dark:bg-green-900/10' 
@@ -348,17 +361,17 @@ export function ChangeDetectionPanel() {
                         ) : (
                           <AlertCircle className="h-4 w-4 text-red-600" />
                         )}
-                        <span className="font-medium">{result.scenarioId as string}</span>
+                        <span className="font-medium">{result.scenarioId}</span>
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        Accuracy: {((result.details as Record<string, unknown>)?.accuracy as number * 100).toFixed(1)}%
+                        Accuracy: {(result.details.accuracy * 100).toFixed(1)}%
                       </span>
                     </div>
                     
-                    {Array.isArray((result.details as Record<string, unknown>)?.errors) && 
-                     ((result.details as Record<string, unknown>).errors as string[]).length > 0 && (
+                    {Array.isArray(result.details.errors) && 
+                     result.details.errors.length > 0 && (
                       <div className="mt-2 text-sm text-red-600">
-                        {((result.details as Record<string, unknown>).errors as string[]).map((error: string, errorIndex: number) => (
+                        {result.details.errors.map((error, errorIndex) => (
                           <p key={errorIndex}>• {error}</p>
                         ))}
                       </div>

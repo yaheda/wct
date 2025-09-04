@@ -1,5 +1,6 @@
-import { contentProcessor, ProcessedContent } from './content-processor'
+import { contentProcessor } from './content-processor'
 import { changeDetector, ChangeDetectionResult } from './change-detector'
+import { LLMProviderConfig } from './llm-providers'
 
 export interface TestScenario {
   id: string
@@ -24,7 +25,16 @@ export interface TestResult {
   details: {
     accuracy: number
     errors: string[]
+    llmProvider?: string
+    testMode: 'mock' | 'real-llm'
   }
+}
+
+export interface TestRunOptions {
+  useRealLLM?: boolean
+  llmProvider?: Partial<LLMProviderConfig>
+  scenarios?: string[] // Run specific scenarios by ID
+  verbose?: boolean
 }
 
 class TestFramework {
@@ -357,10 +367,16 @@ class TestFramework {
     return Array.from(this.scenarios.values())
   }
 
-  async runTestScenario(scenarioId: string): Promise<TestResult> {
+  async runTestScenario(scenarioId: string, options: TestRunOptions = {}): Promise<TestResult> {
     const scenario = this.scenarios.get(scenarioId)
     if (!scenario) {
       throw new Error(`Test scenario '${scenarioId}' not found`)
+    }
+
+    const testMode: 'mock' | 'real-llm' = options.useRealLLM ? 'real-llm' : 'mock'
+
+    if (options.verbose) {
+      console.log(`Running test scenario '${scenarioId}' with ${testMode} mode`)
     }
 
     try {
@@ -375,8 +391,12 @@ class TestFramework {
         this.extractTextFromHTML(scenario.afterContent)
       )
 
-      // Run change detection
-      changeDetector.setTestMode(true) // Enable test mode for detailed logging
+      // Configure test mode with LLM provider options
+      changeDetector.setTestMode(true, {
+        useRealLLM: options.useRealLLM,
+        llmProvider: options.llmProvider
+      })
+
       const actualResult = await changeDetector.detectChanges(
         scenario.competitorName,
         scenario.pageType,
@@ -408,7 +428,9 @@ class TestFramework {
         expectedResult: scenario.expectedChanges,
         details: {
           accuracy,
-          errors
+          errors,
+          llmProvider: actualResult.llmProvider,
+          testMode
         }
       }
 
@@ -426,20 +448,35 @@ class TestFramework {
         expectedResult: scenario.expectedChanges,
         details: {
           accuracy: 0,
-          errors: [`Test execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
+          errors: [`Test execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+          testMode
         }
       }
     }
   }
 
-  async runAllTests(): Promise<TestResult[]> {
+  async runAllTests(options: TestRunOptions = {}): Promise<TestResult[]> {
     const results: TestResult[] = []
+    const scenariosToRun = options.scenarios || Array.from(this.scenarios.keys())
     
-    for (const scenarioId of this.scenarios.keys()) {
-      console.log(`Running test scenario: ${scenarioId}`)
+    if (options.verbose) {
+      console.log(`Running ${scenariosToRun.length} test scenarios with options:`, {
+        useRealLLM: options.useRealLLM || false,
+        llmProvider: options.llmProvider?.provider || 'default'
+      })
+    }
+    
+    for (const scenarioId of scenariosToRun) {
+      if (options.verbose) {
+        console.log(`Running test scenario: ${scenarioId}`)
+      }
       try {
-        const result = await this.runTestScenario(scenarioId)
+        const result = await this.runTestScenario(scenarioId, options)
         results.push(result)
+        
+        if (options.verbose) {
+          console.log(`✓ ${scenarioId}: ${result.passed ? 'PASSED' : 'FAILED'} (accuracy: ${(result.details.accuracy * 100).toFixed(1)}%)`)
+        }
       } catch (error) {
         console.error(`Failed to run test ${scenarioId}:`, error)
       }
@@ -454,6 +491,8 @@ class TestFramework {
       passed: number
       failed: number
       averageAccuracy: number
+      testMode: string
+      llmProviders: string[]
     }
     details: TestResult[]
   } {
@@ -461,15 +500,85 @@ class TestFramework {
     const passed = results.filter(r => r.passed).length
     const failed = total - passed
     const averageAccuracy = results.reduce((sum, r) => sum + r.details.accuracy, 0) / total
+    const testModes = new Set(results.map(r => r.details.testMode))
+    const llmProviders = new Set(results.map(r => r.details.llmProvider).filter(Boolean) as string[])
 
     return {
       summary: {
         total,
         passed,
         failed,
-        averageAccuracy: Math.round(averageAccuracy * 100) / 100
+        averageAccuracy: Math.round(averageAccuracy * 100) / 100,
+        testMode: Array.from(testModes).join(', '),
+        llmProviders: Array.from(llmProviders)
       },
       details: results
+    }
+  }
+
+  // Add method to run comparative tests
+  async runComparativeTests(options: {
+    scenarios?: string[]
+    verbose?: boolean
+  } = {}): Promise<{
+    mockResults: TestResult[]
+    realLLMResults: TestResult[]
+    comparison: {
+      accuracyDifference: number
+      agreementRate: number
+      detailedComparison: Array<{
+        scenarioId: string
+        mockPassed: boolean
+        realLLMPassed: boolean
+        accuracyDiff: number
+        agreement: boolean
+      }>
+    }
+  }> {
+    if (options.verbose) {
+      console.log('Running comparative tests (Mock vs Real LLM)...')
+    }
+
+    // Run tests with mock provider
+    const mockResults = await this.runAllTests({
+      ...options,
+      useRealLLM: false
+    })
+
+    // Run tests with real LLM provider  
+    const realLLMResults = await this.runAllTests({
+      ...options,
+      useRealLLM: true
+    })
+
+    // Calculate comparison metrics
+    const mockAccuracy = mockResults.reduce((sum, r) => sum + r.details.accuracy, 0) / mockResults.length
+    const realLLMAccuracy = realLLMResults.reduce((sum, r) => sum + r.details.accuracy, 0) / realLLMResults.length
+    const accuracyDifference = realLLMAccuracy - mockAccuracy
+
+    const detailedComparison = mockResults.map((mockResult, index) => {
+      const realLLMResult = realLLMResults[index]
+      const agreement = mockResult.passed === realLLMResult.passed
+      
+      return {
+        scenarioId: mockResult.scenarioId,
+        mockPassed: mockResult.passed,
+        realLLMPassed: realLLMResult.passed,
+        accuracyDiff: realLLMResult.details.accuracy - mockResult.details.accuracy,
+        agreement
+      }
+    })
+
+    const agreementRate = detailedComparison.filter(c => c.agreement).length / detailedComparison.length
+
+    return {
+      mockResults,
+      realLLMResults,
+      comparison: {
+        accuracyDifference,
+        agreementRate,
+        detailedComparison
+      }
     }
   }
 

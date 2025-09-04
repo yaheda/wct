@@ -8,18 +8,15 @@ import { useClerk } from "@clerk/nextjs"
 import { Logo } from "@/components/Logo"
 import { 
   LayoutDashboard, 
-  Monitor, 
+  TrendingUp, 
   Bell, 
-  Settings, 
-  User,
   LogOut
 } from "lucide-react"
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Monitors', href: '/dashboard/monitors', icon: Monitor },
-  { name: 'Alerts', href: '/dashboard/alerts', icon: Bell },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { name: 'Changes', href: '/dashboard/changes', icon: TrendingUp },
+  { name: 'Detection', href: '/dashboard/detection', icon: Bell },
 ]
 
 export function DashboardSidebar() {
@@ -57,23 +54,14 @@ export function DashboardSidebar() {
               </ul>
             </li>
             <li className="mt-auto">
-              <div className="space-y-1">
-                <Link
-                  href="/dashboard/profile"
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6"
-                >
-                  <User className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  Profile
-                </Link>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-x-3 text-muted-foreground hover:text-foreground"
-                  onClick={() => signOut({ redirectUrl: '/' })}
-                >
-                  <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  Sign out
-                </Button>
-              </div>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-x-3 text-muted-foreground hover:text-foreground"
+                onClick={() => signOut({ redirectUrl: '/' })}
+              >
+                <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
+                Sign out
+              </Button>
             </li>
           </ul>
         </nav>
