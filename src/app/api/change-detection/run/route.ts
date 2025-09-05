@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Handle test mode
     if (testMode) {
       console.log('Running in test mode - using mock scenarios')
-      const testResults = await testFramework.runAllTests()
+      const testResults = await testFramework.runAllTests({useRealLLM: true, verbose: true})
       const report = testFramework.generateTestReport(testResults)
       
       return NextResponse.json({

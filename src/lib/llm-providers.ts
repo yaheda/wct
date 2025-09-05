@@ -1,5 +1,19 @@
 import { LLMProvider } from './change-detector'
 
+// Utility function to clean JSON responses from LLMs
+function cleanJsonResponse(content: string): string {
+  // Remove markdown code block markers
+  let cleaned = content.trim()
+  
+  // Handle various markdown code block formats
+  cleaned = cleaned.replace(/^```json\s*/i, '') // Remove opening ```json
+  cleaned = cleaned.replace(/^```\s*/i, '') // Remove opening ```
+  cleaned = cleaned.replace(/\s*```$/i, '') // Remove closing ```
+  
+  // Trim any remaining whitespace
+  return cleaned.trim()
+}
+
 // Configuration interface for LLM providers
 export interface LLMProviderConfig {
   provider: 'openai' | 'anthropic' | 'mock'
@@ -39,7 +53,7 @@ export class OpenAIProvider implements LLMProvider {
         messages: [
           {
             role: 'system',
-            content: 'You are a SaaS competitive intelligence expert. Respond only with valid JSON.'
+            content: 'You are a SaaS competitive intelligence expert. Respond only with raw JSON - no markdown formatting, no code blocks, no explanations. Return valid JSON only.'
           },
           {
             role: 'user',
@@ -64,9 +78,11 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     try {
-      return JSON.parse(content)
+      const cleanedContent = cleanJsonResponse(content)
+      return JSON.parse(cleanedContent)
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', content)
+      console.error('Cleaned content:', cleanJsonResponse(content))
       throw new Error(`Invalid JSON response from OpenAI: ${parseError}`)
     }
   }
@@ -102,7 +118,7 @@ export class AnthropicProvider implements LLMProvider {
         messages: [
           {
             role: 'user',
-            content: `You are a SaaS competitive intelligence expert. Respond only with valid JSON.\n\n${prompt}`
+            content: `You are a SaaS competitive intelligence expert. Respond only with raw JSON - no markdown formatting, no code blocks, no explanations. Return valid JSON only.\n\n${prompt}`
           }
         ]
       })
@@ -121,9 +137,11 @@ export class AnthropicProvider implements LLMProvider {
     }
 
     try {
-      return JSON.parse(content)
+      const cleanedContent = cleanJsonResponse(content)
+      return JSON.parse(cleanedContent)
     } catch (parseError) {
       console.error('Failed to parse Anthropic response as JSON:', content)
+      console.error('Cleaned content:', cleanJsonResponse(content))
       throw new Error(`Invalid JSON response from Anthropic: ${parseError}`)
     }
   }

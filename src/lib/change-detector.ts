@@ -180,9 +180,9 @@ Respond with JSON:
         changeType: (analysisResult.changeType as ChangeDetectionResult['changeType']) || 'other',
         changeSummary: String(analysisResult.changeSummary || 'Changes detected'),
         details: {
-          oldValue: (analysisResult.details as any)?.oldValue,
-          newValue: (analysisResult.details as any)?.newValue,
-          impactLevel: ((analysisResult.details as any)?.impactLevel) || 'medium'
+          oldValue: (analysisResult.details as Record<string, unknown>)?.oldValue as string | undefined,
+          newValue: (analysisResult.details as Record<string, unknown>)?.newValue as string | undefined,
+          impactLevel: ((analysisResult.details as Record<string, unknown>)?.impactLevel as 'high' | 'medium' | 'low') || 'medium'
         },
         confidence: (analysisResult.confidence as ChangeDetectionResult['confidence']) || 'medium',
         competitiveAnalysis: analysisResult.competitiveAnalysis as string,
