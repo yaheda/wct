@@ -347,6 +347,56 @@ class TestFramework {
           changeType: 'product',
           impactLevel: 'medium' // Product announcements can vary in impact
         }
+      },,
+      {
+        id: 'blog-announcement-same',
+        name: 'Product Announcement Blog Post SAME',
+        description: 'Test detection of important product announcements in blog',
+        pageType: 'blog',
+        competitorName: 'TestSaaS',
+        beforeContent: `
+          <html>
+            <head><title>TestSaaS Blog</title></head>
+            <body>
+              <div class="blog-posts">
+                <article>
+                  <h2>5 Tips for Better Team Productivity</h2>
+                  <p>Published: Jan 10, 2024</p>
+                  <p>Learn how to boost your team's productivity with these simple tips...</p>
+                </article>
+                <article>
+                  <h2>Customer Success Story: How Acme Corp Increased Efficiency</h2>
+                  <p>Published: Jan 8, 2024</p>
+                  <p>Discover how Acme Corp used TestSaaS to streamline their workflow...</p>
+                </article>
+              </div>
+            </body>
+          </html>
+        `,
+        afterContent: `
+          <html>
+            <head><title>TestSaaS Blog</title></head>
+            <body>
+              <div class="blog-posts">
+                <article>
+                  <h2>5 Tips for Better Team Productivity</h2>
+                  <p>Published: Jan 10, 2024</p>
+                  <p>Learn how to boost your team's productivity with these simple tips...</p>
+                </article>
+                <article>
+                  <h2>Customer Success Story: How Acme Corp Increased Efficiency</h2>
+                  <p>Published: Jan 8, 2024</p>
+                  <p>Discover how Acme Corp used TestSaaS to streamline their workflow...</p>
+                </article>
+              </div>
+            </body>
+          </html>
+        `,
+        expectedChanges: {
+          hasSignificantChange: false,
+          changeType: 'product',
+          impactLevel: 'medium' // Product announcements can vary in impact
+        }
       }
     ]
 
