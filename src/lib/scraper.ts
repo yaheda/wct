@@ -1,5 +1,4 @@
 import { chromium, firefox, webkit, Browser, Page } from 'playwright'
-// @ts-expect-error - robots-parser doesn't have TypeScript definitions
 import robotsParser from 'robots-parser'
 
 export interface ScrapingResult {
@@ -200,7 +199,7 @@ class PlaywrightScraper {
       const robotsCache = await this.getRobots(domain, options)
       const userAgent = options.userAgent || '*'
       
-      const allowed = robotsCache.robots.isAllowed(url, userAgent)
+      const allowed = (robotsCache.robots as { isAllowed: (url: string, userAgent: string) => boolean }).isAllowed(url, userAgent)
       const crawlDelay = Math.max(robotsCache.crawlDelay, this.MIN_REQUEST_INTERVAL)
 
       return {

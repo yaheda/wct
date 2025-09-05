@@ -96,14 +96,6 @@ ANALYSIS FOCUS:
 - Integration announcements
 - Security/compliance updates
 
-IGNORE:
-- Blog post dates and timestamps
-- Customer testimonials and case studies
-- Job postings and team updates
-- Legal/privacy policy changes
-- Social media feeds and view counts
-- Cookie banners and UI elements
-
 Respond with JSON:
 {
   "hasSignificantChange": boolean,
@@ -138,19 +130,8 @@ Respond with JSON:
       }
     }
 
-    // If similarity is very high (>95%), likely minor changes
+    // Calculate similarity for analysis but don't filter based on it
     const textSimilarity = this.calculateTextSimilarity(oldContent.cleanedText, newContent.cleanedText)
-    if (textSimilarity > 0.95) {
-      return {
-        hasSignificantChange: false,
-        changeType: 'other',
-        changeSummary: 'Minor content updates detected',
-        details: {
-          impactLevel: 'low'
-        },
-        confidence: 'medium'
-      }
-    }
 
     try {
       const prompt = this.generateSaaSPrompt(competitorName, pageType, oldContent, newContent)
@@ -164,7 +145,7 @@ Respond with JSON:
         } catch {
           // If parsing fails, create a basic response
           analysisResult = {
-            hasSignificantChange: textSimilarity < 0.8,
+            hasSignificantChange: true, // Always report changes when we detect them
             changeType: this.inferChangeType(pageType, oldContent, newContent),
             changeSummary: 'Content changes detected via text analysis',
             details: { impactLevel: 'medium' },
@@ -252,27 +233,23 @@ Respond with JSON:
     textSimilarity: number
   ): ChangeDetectionResult {
     const changeType = this.inferChangeType(pageType, oldContent, newContent)
-    const hasSignificantChange = textSimilarity < 0.7
     
     let changeSummary = 'Content changes detected'
-    let impactLevel: 'high' | 'medium' | 'low' = 'medium'
 
+    // Provide neutral descriptions based on change type
     if (changeType === 'pricing') {
       changeSummary = 'Pricing page updates detected'
-      impactLevel = 'high'
     } else if (changeType === 'features') {
       changeSummary = 'Feature page modifications found'
-      impactLevel = 'medium'
     } else if (textSimilarity < 0.5) {
       changeSummary = 'Major content restructuring detected'
-      impactLevel = 'high'
     }
 
     return {
-      hasSignificantChange,
+      hasSignificantChange: true, // Always report detected changes
       changeType,
       changeSummary,
-      details: { impactLevel },
+      details: { impactLevel: 'medium' }, // Neutral default
       confidence: 'low' // Lower confidence since we're using fallback
     }
   }
@@ -304,10 +281,10 @@ Respond with JSON:
       } catch (error) {
         console.error(`Failed to detect changes for ${change.competitorName}:`, error)
         results.push({
-          hasSignificantChange: false,
+          hasSignificantChange: true, // Report errors as changes for user awareness
           changeType: 'other',
           changeSummary: 'Analysis failed',
-          details: { impactLevel: 'low' },
+          details: { impactLevel: 'medium' },
           confidence: 'low'
         })
       }

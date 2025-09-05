@@ -180,23 +180,23 @@ export class MockLLMProvider implements LLMProvider {
         details: {
           oldValue: hasMultiplePrices ? priceMatches[0] : undefined,
           newValue: hasMultiplePrices ? priceMatches[1] : undefined,
-          impactLevel: hasMultiplePrices ? 'high' : 'medium'
+          impactLevel: 'medium' // Let user decide impact
         },
         confidence: hasMultiplePrices ? 'high' : 'medium',
         competitiveAnalysis: hasMultiplePrices ? 'Competitor has adjusted pricing strategy' : undefined
       }
     }
 
-    // Minor content updates - check EARLY for date/number changes without significant content
+    // Detect content updates - report all changes, let user decide significance
     if ((lowerPrompt.includes('january') && lowerPrompt.includes('last updated')) ||
         (lowerPrompt.includes('1,000') && lowerPrompt.includes('1,050')) ||
         (lowerPrompt.includes('customers') && !lowerPrompt.includes('feature') && !lowerPrompt.includes('pricing') && !lowerPrompt.includes('announcement'))) {
       return {
-        hasSignificantChange: false,
+        hasSignificantChange: true, // Report all detected changes
         changeType: 'other',
-        changeSummary: 'Minor content updates detected',
+        changeSummary: 'Content updates detected',
         details: {
-          impactLevel: 'low'
+          impactLevel: 'medium' // Neutral default
         },
         confidence: 'medium'
       }
@@ -211,7 +211,7 @@ export class MockLLMProvider implements LLMProvider {
         changeType: 'product',
         changeSummary: 'Major product announcement detected',
         details: {
-          impactLevel: 'high'
+          impactLevel: 'medium' // Neutral default
         },
         confidence: 'high',
         competitiveAnalysis: 'Significant product update may impact competitive landscape'
@@ -227,7 +227,7 @@ export class MockLLMProvider implements LLMProvider {
         changeType: 'messaging',
         changeSummary: 'Market positioning shift detected',
         details: {
-          impactLevel: 'high'
+          impactLevel: 'medium' // Neutral default
         },
         confidence: 'high',
         competitiveAnalysis: 'Competitor has shifted target market positioning'
@@ -242,23 +242,20 @@ export class MockLLMProvider implements LLMProvider {
         changeType: 'features',
         changeSummary: 'New features announced in product offering',
         details: {
-          impactLevel: 'medium'
+          impactLevel: 'medium' // Already neutral
         },
         confidence: 'high',
         competitiveAnalysis: 'Competitor expanding product capabilities'
       }
     }
 
-    // Default fallback - be more conservative about detecting changes
-    const textLength = prompt.length
-    const hasSignificantChange = textLength > 3000 // Higher threshold for significant changes
-    
+    // Default fallback - always report changes
     return {
-      hasSignificantChange,
+      hasSignificantChange: true, // Always report detected changes
       changeType: 'other',
-      changeSummary: hasSignificantChange ? 'Content changes detected' : 'Minor content updates',
+      changeSummary: 'Content changes detected',
       details: {
-        impactLevel: hasSignificantChange ? 'medium' : 'low'
+        impactLevel: 'medium' // Neutral default
       },
       confidence: 'low'
     }
