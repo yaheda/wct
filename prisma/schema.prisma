@@ -131,3 +131,12 @@ model TestScenario {
   
   @@map("test_scenarios")
 }
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  status    String   @default("pending") // pending, confirmed
+  createdAt DateTime @default(now())
+  
+  @@map("waitlist_entries")
+}

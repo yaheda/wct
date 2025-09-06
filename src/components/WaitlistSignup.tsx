@@ -28,15 +28,21 @@ export function WaitlistSignup({ isOpen, onClose }: WaitlistSignupProps) {
     setStatus("idle")
 
     try {
-      // Simulate API call - replace with actual endpoint
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // For demo purposes, randomly succeed/fail
-      if (Math.random() > 0.1) {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
         setStatus("success")
         setEmail("")
       } else {
-        throw new Error("Something went wrong. Please try again.")
+        throw new Error(data.error || "Something went wrong. Please try again.")
       }
     } catch (error) {
       setStatus("error")
