@@ -48,7 +48,9 @@ export async function POST(request: NextRequest) {
       llmProvider: options.llmProvider,
       scenarios: options.scenarios,
       verbose: options.verbose || false,
-      useSyntheticSites: options.useSyntheticSites || false
+      useSyntheticSites: options.useSyntheticSites || false,
+      sendTestEmails: options.sendTestEmails || false,
+      testUserEmail: options.testUserEmail
     }
 
     if (action === 'test-llm') {

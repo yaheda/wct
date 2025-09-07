@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
       const testResults = await testFramework.runAllTests({
         useRealLLM: true, 
         verbose: true,
-        useSyntheticSites: options?.useSyntheticSites || false
+        useSyntheticSites: options?.useSyntheticSites || false,
+        sendTestEmails: options?.sendTestEmails || false,
+        testUserEmail: options?.testUserEmail
       })
       const report = testFramework.generateTestReport(testResults)
       

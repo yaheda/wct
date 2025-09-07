@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { scraper } from './scraper'
 import { contentProcessor } from './content-processor'
 import { changeDetector } from './change-detector'
+import { notificationEngine } from './notification-engine'
 
 const db = new PrismaClient()
 
@@ -145,6 +146,31 @@ class ChangeDetectionService {
               results.summary.changesFound++
 
               console.log(`Change detected for ${page.url}: ${changeResult.changeSummary}`)
+
+              // Trigger notification processing
+              try {
+                const notificationResult = await notificationEngine.processChange({
+                  id: change.id,
+                  companyId: page.companyId,
+                  pageId: page.id,
+                  changeType: changeResult.changeType,
+                  changeSummary: changeResult.changeSummary,
+                  oldValue: changeResult.details.oldValue,
+                  newValue: changeResult.details.newValue,
+                  impactLevel: changeResult.details.impactLevel,
+                  confidence: changeResult.confidence,
+                  competitiveAnalysis: changeResult.competitiveAnalysis,
+                  detectedAt: new Date()
+                })
+
+                if (notificationResult.success && notificationResult.notifications > 0) {
+                  console.log(`Queued ${notificationResult.notifications} notification(s) for change ${change.id}`)
+                } else if (!notificationResult.success) {
+                  console.error(`Notification processing failed for change ${change.id}:`, notificationResult.errors)
+                }
+              } catch (notificationError) {
+                console.error(`Error triggering notifications for change ${change.id}:`, notificationError)
+              }
             }
           }
 

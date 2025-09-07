@@ -1,8 +1,8 @@
 import { contentProcessor } from './content-processor'
 import { changeDetector, ChangeDetectionResult } from './change-detector'
 import { LLMProviderConfig } from './llm-providers'
-import { testSiteManager } from './test-site-manager'
 import { scraper } from './scraper'
+import { emailService, type NotificationContext } from './email-service'
 
 export interface TestScenario {
   id: string
@@ -35,6 +35,9 @@ export interface TestResult {
     llmProvider?: string
     testMode: 'mock' | 'real-llm' | 'synthetic'
     contentSource?: 'inline' | 'synthetic-urls'
+    emailSent?: boolean
+    emailError?: string
+    notificationType?: string
   }
 }
 
@@ -44,6 +47,8 @@ export interface TestRunOptions {
   scenarios?: string[] // Run specific scenarios by ID
   verbose?: boolean
   useSyntheticSites?: boolean // Use synthetic test sites instead of inline content
+  sendTestEmails?: boolean // Send real emails during test scenarios
+  testUserEmail?: string // Email address to send test notifications to
 }
 
 class TestFramework {
@@ -522,6 +527,54 @@ class TestFramework {
         errors.push(`Expected hasSignificantChange: ${scenario.expectedChanges.hasSignificantChange}, got: ${actualResult.hasSignificantChange}`)
       }
 
+      // Send test email if requested and change was detected
+      let emailSent = false
+      let emailError: string | undefined
+      let notificationType: string | undefined
+
+      if (options.sendTestEmails && options.testUserEmail && actualResult.hasSignificantChange) {
+        try {
+          if (options.verbose) {
+            console.log(`Sending test email for scenario '${scenarioId}' to ${options.testUserEmail}`)
+          }
+
+          // Create mock notification context
+          const notificationContext = this.createMockNotificationContext(
+            scenario,
+            actualResult
+          )
+
+          // Determine notification type
+          notificationType = this.getNotificationTypeForChange(actualResult.changeType)
+
+          // Send email directly using email service
+          const result = await emailService.sendEmail({
+            to: options.testUserEmail,
+            subject: `[TEST] ${scenario.competitorName} ${actualResult.changeType} change detected`,
+            html: await this.generateTestEmailHTML(notificationContext, notificationType),
+            text: await this.generateTestEmailText(notificationContext, notificationType)
+          })
+
+          if (result.success) {
+            emailSent = true
+            if (options.verbose) {
+              console.log(`✓ Test email sent successfully (Message ID: ${result.messageId})`)
+            }
+          } else {
+            emailError = result.error
+            if (options.verbose) {
+              console.log(`✗ Failed to send test email: ${result.error}`)
+            }
+          }
+
+        } catch (error) {
+          emailError = error instanceof Error ? error.message : 'Unknown email error'
+          if (options.verbose) {
+            console.log(`✗ Email sending error: ${emailError}`)
+          }
+        }
+      }
+
       // Make changeType mismatches warnings, not errors (categories can be subjective)
       if (actualResult.changeType !== scenario.expectedChanges.changeType && scenario.expectedChanges.hasSignificantChange) {
         console.warn(`Change type mismatch in ${scenarioId}: expected ${scenario.expectedChanges.changeType}, got ${actualResult.changeType}`)
@@ -543,7 +596,10 @@ class TestFramework {
           errors,
           llmProvider: actualResult.llmProvider,
           testMode,
-          contentSource
+          contentSource,
+          emailSent,
+          emailError,
+          notificationType
         }
       }
 
@@ -787,6 +843,125 @@ class TestFramework {
     const expectedIndex = levels.indexOf(expected)
     
     return Math.abs(actualIndex - expectedIndex) <= 1
+  }
+
+  private createMockNotificationContext(
+    scenario: TestScenario,
+    changeResult: ChangeDetectionResult
+  ): NotificationContext {
+    return {
+      userId: 'test-user-id',
+      changeId: `test-change-${scenario.id}`,
+      competitorName: scenario.competitorName,
+      changeType: changeResult.changeType,
+      changeSummary: changeResult.changeSummary,
+      impactLevel: changeResult.details.impactLevel,
+      oldValue: changeResult.details.oldValue,
+      newValue: changeResult.details.newValue,
+      competitiveAnalysis: changeResult.competitiveAnalysis || `This test change in ${scenario.competitorName}'s ${scenario.pageType} page demonstrates the notification system's ability to detect and communicate ${changeResult.changeType} changes.`,
+      pageUrl: `https://${scenario.competitorName.toLowerCase().replace(/\s+/g, '')}.com/${scenario.pageType}`,
+      pageType: scenario.pageType
+    }
+  }
+
+  private getNotificationTypeForChange(changeType: string): 'pricing_alert' | 'feature_alert' | 'weekly_summary' {
+    switch (changeType) {
+      case 'pricing':
+        return 'pricing_alert'
+      case 'features':
+      case 'product':
+      case 'integration':
+        return 'feature_alert'
+      default:
+        return 'feature_alert' // Default to feature alert for other changes
+    }
+  }
+
+  private async generateTestEmailHTML(context: NotificationContext, notificationType: string): Promise<string> {
+    // Simple test email template - in production this would use the actual email templates
+    const { competitorName, changeType, changeSummary, impactLevel, oldValue, newValue, competitiveAnalysis, pageUrl, pageType } = context
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .header { text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; }
+    .alert-badge { display: inline-block; background-color: ${impactLevel === 'high' ? '#ef4444' : impactLevel === 'medium' ? '#f59e0b' : '#10b981'}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+    .change-details { background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+    .competitive-analysis { background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+    .test-badge { background-color: #10b981; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="test-badge">TEST EMAIL</span>
+      <h1 style="margin: 10px 0 0 0; font-size: 24px;">🚨 Competitor ${changeType.charAt(0).toUpperCase() + changeType.slice(1)} Alert</h1>
+    </div>
+    
+    <div class="alert-badge">${impactLevel.toUpperCase()} IMPACT</div>
+    
+    <p><strong>${competitorName}</strong> just made a ${changeType} change on their ${pageType} page.</p>
+    
+    <div class="competitive-analysis">
+      <h3 style="margin: 0 0 10px 0; color: #92400e;">🎯 COMPETITIVE ANALYSIS:</h3>
+      <p style="margin: 0;">${competitiveAnalysis}</p>
+    </div>
+    
+    <div class="change-details">
+      <h3 style="margin: 0 0 15px 0;">📋 Change Details:</h3>
+      <p><strong>Summary:</strong> ${changeSummary}</p>
+      ${oldValue ? `<p><strong>Before:</strong> <span style="color: #ef4444; text-decoration: line-through;">${oldValue}</span></p>` : ''}
+      ${newValue ? `<p><strong>After:</strong> <span style="color: #10b981; font-weight: bold;">${newValue}</span></p>` : ''}
+      <p><strong>Page:</strong> ${pageType}</p>
+      <p><strong>Impact Level:</strong> ${impactLevel}</p>
+      <p><strong>Change Type:</strong> ${changeType}</p>
+    </div>
+    
+    <p style="text-align: center;">
+      <a href="${pageUrl}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View Competitor Page →</a>
+    </p>
+    
+    <div class="footer">
+      <p><strong>This is a test email</strong> generated by the Website Change Alert notification system.<br>
+      Notification Type: ${notificationType}</p>
+    </div>
+  </div>
+</body>
+</html>
+    `
+  }
+
+  private async generateTestEmailText(context: NotificationContext, notificationType: string): Promise<string> {
+    const { competitorName, changeType, changeSummary, impactLevel, oldValue, newValue, competitiveAnalysis, pageUrl, pageType } = context
+
+    return `
+🚨 [TEST EMAIL] Competitor ${changeType.toUpperCase()} Alert - ${impactLevel.toUpperCase()} IMPACT
+
+${competitorName} just made a ${changeType} change on their ${pageType} page.
+
+🎯 COMPETITIVE ANALYSIS:
+${competitiveAnalysis}
+
+📋 CHANGE DETAILS:
+• Summary: ${changeSummary}
+${oldValue ? `• Before: ${oldValue}` : ''}
+${newValue ? `• After: ${newValue}` : ''}
+• Page: ${pageType}
+• Impact Level: ${impactLevel}
+• Change Type: ${changeType}
+
+View competitor page: ${pageUrl}
+
+---
+This is a test email generated by the Website Change Alert notification system.
+Notification Type: ${notificationType}
+    `
   }
 }
 

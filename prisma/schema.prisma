@@ -24,6 +24,8 @@ model User {
   updatedAt     DateTime @updatedAt
   
   companies     Company[]
+  notifications Notification[]
+  notificationQueue NotificationQueue[] @relation("UserNotifications")
   
   @@map("users")
 }
@@ -80,6 +82,8 @@ model SaasChange {
   company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   page                  MonitoredPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
   detectionRun          ChangeDetectionRun? @relation(fields: [detectionRunId], references: [id], onDelete: SetNull)
+  notifications         Notification[]
+  notificationQueue     NotificationQueue[]
   
   @@map("saas_changes")
 }
@@ -139,4 +143,72 @@ model WaitlistEntry {
   createdAt DateTime @default(now())
   
   @@map("waitlist_entries")
+}
+
+
+model EmailTemplate {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  templateType      String   // pricing_alert, feature_alert, weekly_summary
+  subject           String
+  htmlContent       String
+  textContent       String
+  variables         Json     // Expected template variables
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  notifications     Notification[]
+  notificationQueue NotificationQueue[]
+  
+  @@map("email_templates")
+}
+
+model NotificationQueue {
+  id                String   @id @default(cuid())
+  userId            String
+  changeId          String?
+  templateId        String
+  recipientEmail    String
+  subject           String
+  htmlContent       String
+  textContent       String
+  priority          Int      @default(1) // 1=high, 2=medium, 3=low
+  status            String   @default("pending") // pending, sent, failed, cancelled
+  scheduledFor      DateTime @default(now())
+  sentAt            DateTime?
+  errorMessage      String?
+  retryCount        Int      @default(0)
+  maxRetries        Int      @default(3)
+  metadata          Json?    // Additional context data
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User         @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  change            SaasChange?  @relation(fields: [changeId], references: [id], onDelete: SetNull)
+  template          EmailTemplate @relation(fields: [templateId], references: [id])
+  
+  @@index([status, scheduledFor])
+  @@index([userId, status])
+  @@map("notification_queue")
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  changeId          String?
+  templateId        String
+  notificationType  String   // immediate_pricing, feature_announcements, weekly_summary
+  status            String   @default("sent") // sent, failed
+  sentAt            DateTime @default(now())
+  readAt            DateTime?
+  clickedAt         DateTime?
+  metadata          Json?    // Email content, links, etc.
+  
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  change            SaasChange?  @relation(fields: [changeId], references: [id], onDelete: SetNull)
+  template          EmailTemplate @relation(fields: [templateId], references: [id])
+  
+  @@index([userId, sentAt])
+  @@map("notifications")
 }

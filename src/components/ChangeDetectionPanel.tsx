@@ -56,6 +56,8 @@ export function ChangeDetectionPanel() {
   const [isTestDialogOpen, setIsTestDialogOpen] = React.useState(false)
   const [testResults, setTestResults] = React.useState<TestReport | null>(null)
   const [useSyntheticSites, setUseSyntheticSites] = React.useState(false)
+  const [sendTestEmails, setSendTestEmails] = React.useState(false)
+  const [testUserEmail, setTestUserEmail] = React.useState('')
 
   // Fetch system health on component mount
   React.useEffect(() => {
@@ -89,7 +91,9 @@ export function ChangeDetectionPanel() {
           runType: 'manual',
           testMode,
           options: {
-            useSyntheticSites: testMode ? useSyntheticSites : false
+            useSyntheticSites: testMode ? useSyntheticSites : false,
+            sendTestEmails: testMode ? sendTestEmails : false,
+            testUserEmail: testMode && sendTestEmails ? testUserEmail : undefined
           }
         }),
       })
@@ -272,6 +276,32 @@ export function ChangeDetectionPanel() {
               </label>
             </div>
             
+            {/* Send Test Emails Toggle */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2 p-3 rounded-md border border-border bg-muted/50">
+                <input
+                  type="checkbox"
+                  id="sendTestEmails"
+                  checked={sendTestEmails}
+                  onChange={(e) => setSendTestEmails(e.target.checked)}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="sendTestEmails" className="flex items-center space-x-2 text-sm font-medium">
+                  <span>Send Test Emails</span>
+                </label>
+              </div>
+              
+              {sendTestEmails && (
+                <input
+                  type="email"
+                  placeholder="Test email address"
+                  value={testUserEmail}
+                  onChange={(e) => setTestUserEmail(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background"
+                />
+              )}
+            </div>
+            
             <Button
               onClick={runTestScenarios}
               disabled={isRunning}
@@ -392,6 +422,15 @@ export function ChangeDetectionPanel() {
                             Synthetic
                           </span>
                         )}
+                        {result.details.emailSent !== undefined && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                            result.details.emailSent 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
+                            {result.details.emailSent ? '✉️ Email Sent' : '✉️ Email Failed'}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
@@ -401,6 +440,12 @@ export function ChangeDetectionPanel() {
                         {result.details.errors.map((error, errorIndex) => (
                           <p key={errorIndex}>• {error}</p>
                         ))}
+                      </div>
+                    )}
+                    
+                    {result.details.emailError && (
+                      <div className="mt-2 text-sm text-red-600">
+                        <p>• Email Error: {result.details.emailError}</p>
                       </div>
                     )}
                   </div>
