@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Play, Square, TestTube, Activity, AlertCircle, CheckCircle2, Clock, Zap } from "lucide-react"
+import { Play, Square, TestTube, Activity, AlertCircle, CheckCircle2, Clock, Zap, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { TestResult } from "@/lib/test-scenarios"
@@ -55,6 +55,7 @@ export function ChangeDetectionPanel() {
   const [lastRun, setLastRun] = React.useState<DetectionRun | null>(null)
   const [isTestDialogOpen, setIsTestDialogOpen] = React.useState(false)
   const [testResults, setTestResults] = React.useState<TestReport | null>(null)
+  const [useSyntheticSites, setUseSyntheticSites] = React.useState(false)
 
   // Fetch system health on component mount
   React.useEffect(() => {
@@ -86,7 +87,10 @@ export function ChangeDetectionPanel() {
         },
         body: JSON.stringify({
           runType: 'manual',
-          testMode
+          testMode,
+          options: {
+            useSyntheticSites: testMode ? useSyntheticSites : false
+          }
         }),
       })
 
@@ -252,6 +256,22 @@ export function ChangeDetectionPanel() {
             <p className="text-sm text-muted-foreground">
               Run detection on test scenarios to validate accuracy
             </p>
+            
+            {/* Synthetic Sites Toggle */}
+            <div className="flex items-center space-x-2 p-3 rounded-md border border-border bg-muted/50">
+              <input
+                type="checkbox"
+                id="useSyntheticSites"
+                checked={useSyntheticSites}
+                onChange={(e) => setUseSyntheticSites(e.target.checked)}
+                className="rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="useSyntheticSites" className="flex items-center space-x-2 text-sm font-medium">
+                <Globe className="h-4 w-4" />
+                <span>Use Synthetic Test Sites</span>
+              </label>
+            </div>
+            
             <Button
               onClick={runTestScenarios}
               disabled={isRunning}
@@ -267,6 +287,7 @@ export function ChangeDetectionPanel() {
                 <>
                   <TestTube className="h-4 w-4 mr-2" />
                   Run Test Scenarios
+                  {useSyntheticSites && <Globe className="h-4 w-4 ml-2" />}
                 </>
               )}
             </Button>
@@ -363,9 +384,15 @@ export function ChangeDetectionPanel() {
                         )}
                         <span className="font-medium">{result.scenarioId}</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        Accuracy: {(result.details.accuracy * 100).toFixed(1)}%
-                      </span>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <span>Accuracy: {(result.details.accuracy * 100).toFixed(1)}%</span>
+                        {result.details.contentSource === 'synthetic-urls' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                            <Globe className="h-3 w-3 mr-1" />
+                            Synthetic
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     {Array.isArray(result.details.errors) && 

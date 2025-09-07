@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       useRealLLM: options.useRealLLM || false,
       llmProvider: options.llmProvider,
       scenarios: options.scenarios,
-      verbose: options.verbose || false
+      verbose: options.verbose || false,
+      useSyntheticSites: options.useSyntheticSites || false
     }
 
     if (action === 'test-llm') {
@@ -76,7 +77,8 @@ export async function POST(request: NextRequest) {
       // Run comparative tests (mock vs real LLM)
       const comparison = await testFramework.runComparativeTests({
         scenarios: testOptions.scenarios,
-        verbose: testOptions.verbose
+        verbose: testOptions.verbose,
+        useSyntheticSites: testOptions.useSyntheticSites
       })
       return NextResponse.json(comparison)
     }

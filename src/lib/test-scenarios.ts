@@ -1,6 +1,8 @@
 import { contentProcessor } from './content-processor'
 import { changeDetector, ChangeDetectionResult } from './change-detector'
 import { LLMProviderConfig } from './llm-providers'
+import { testSiteManager } from './test-site-manager'
+import { scraper } from './scraper'
 
 export interface TestScenario {
   id: string
@@ -15,6 +17,11 @@ export interface TestScenario {
     changeType: ChangeDetectionResult['changeType']
     impactLevel: 'high' | 'medium' | 'low'
   }
+  // New synthetic test site support
+  syntheticUrls?: {
+    beforeUrl: string
+    afterUrl?: string
+  }
 }
 
 export interface TestResult {
@@ -26,7 +33,8 @@ export interface TestResult {
     accuracy: number
     errors: string[]
     llmProvider?: string
-    testMode: 'mock' | 'real-llm'
+    testMode: 'mock' | 'real-llm' | 'synthetic'
+    contentSource?: 'inline' | 'synthetic-urls'
   }
 }
 
@@ -35,6 +43,7 @@ export interface TestRunOptions {
   llmProvider?: Partial<LLMProviderConfig>
   scenarios?: string[] // Run specific scenarios by ID
   verbose?: boolean
+  useSyntheticSites?: boolean // Use synthetic test sites instead of inline content
 }
 
 class TestFramework {
@@ -132,6 +141,10 @@ class TestFramework {
           hasSignificantChange: true,
           changeType: 'pricing',
           impactLevel: 'high' // Major pricing changes should still be high impact
+        },
+        syntheticUrls: {
+          beforeUrl: 'http://localhost:3005/test-sites/testsaas/pricing/before.html',
+          afterUrl: 'http://localhost:3005/test-sites/testsaas/pricing/after.html'
         }
       },
       {
@@ -196,6 +209,10 @@ class TestFramework {
           hasSignificantChange: true,
           changeType: 'features',
           impactLevel: 'medium' // Feature additions are generally medium impact
+        },
+        syntheticUrls: {
+          beforeUrl: 'http://localhost:3005/test-sites/testsaas/features/before.html',
+          afterUrl: 'http://localhost:3005/test-sites/testsaas/features/after.html'
         }
       },
       {
@@ -423,23 +440,65 @@ class TestFramework {
       throw new Error(`Test scenario '${scenarioId}' not found`)
     }
 
-    const testMode: 'mock' | 'real-llm' = options.useRealLLM ? 'real-llm' : 'mock'
+    const testMode: 'mock' | 'real-llm' | 'synthetic' = options.useSyntheticSites ? 'synthetic' : (options.useRealLLM ? 'real-llm' : 'mock')
+    const contentSource = options.useSyntheticSites ? 'synthetic-urls' : 'inline'
 
     if (options.verbose) {
-      console.log(`Running test scenario '${scenarioId}' with ${testMode} mode`)
+      console.log(`Running test scenario '${scenarioId}' with ${testMode} mode and ${contentSource} content`)
     }
 
     try {
-      // Process both content versions
-      const beforeProcessed = await contentProcessor.processContent(
-        scenario.beforeContent,
-        this.extractTextFromHTML(scenario.beforeContent)
-      )
+      let beforeProcessed, afterProcessed
 
-      const afterProcessed = await contentProcessor.processContent(
-        scenario.afterContent,
-        this.extractTextFromHTML(scenario.afterContent)
-      )
+      if (options.useSyntheticSites && scenario.syntheticUrls) {
+        // Use synthetic test sites
+        const beforeResult = await scraper.scrapePage(scenario.syntheticUrls.beforeUrl, {
+          timeout: 15000,
+          ignoreRobots: true
+        })
+        
+        if (beforeResult.error) {
+          throw new Error(`Failed to load synthetic before page: ${beforeResult.error}`)
+        }
+
+        beforeProcessed = await contentProcessor.processContent(
+          beforeResult.content,
+          beforeResult.textContent
+        )
+
+        if (scenario.syntheticUrls.afterUrl) {
+          const afterResult = await scraper.scrapePage(scenario.syntheticUrls.afterUrl, {
+            timeout: 15000,
+            ignoreRobots: true
+          })
+          
+          if (afterResult.error) {
+            throw new Error(`Failed to load synthetic after page: ${afterResult.error}`)
+          }
+
+          afterProcessed = await contentProcessor.processContent(
+            afterResult.content,
+            afterResult.textContent
+          )
+        } else {
+          // Fallback to inline after content if no synthetic after URL
+          afterProcessed = await contentProcessor.processContent(
+            scenario.afterContent,
+            this.extractTextFromHTML(scenario.afterContent)
+          )
+        }
+      } else {
+        // Use inline content (traditional approach)
+        beforeProcessed = await contentProcessor.processContent(
+          scenario.beforeContent,
+          this.extractTextFromHTML(scenario.beforeContent)
+        )
+
+        afterProcessed = await contentProcessor.processContent(
+          scenario.afterContent,
+          this.extractTextFromHTML(scenario.afterContent)
+        )
+      }
 
       // Configure test mode with LLM provider options
       changeDetector.setTestMode(true, {
@@ -483,7 +542,8 @@ class TestFramework {
           accuracy,
           errors,
           llmProvider: actualResult.llmProvider,
-          testMode
+          testMode,
+          contentSource
         }
       }
 
@@ -502,7 +562,8 @@ class TestFramework {
         details: {
           accuracy: 0,
           errors: [`Test execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
-          testMode
+          testMode,
+          contentSource: options.useSyntheticSites ? 'synthetic-urls' : 'inline'
         }
       }
     }
@@ -569,27 +630,34 @@ class TestFramework {
     }
   }
 
-  // Add method to run comparative tests
+  // Add method to run comparative tests with synthetic site support
   async runComparativeTests(options: {
     scenarios?: string[]
     verbose?: boolean
+    useSyntheticSites?: boolean
   } = {}): Promise<{
     mockResults: TestResult[]
     realLLMResults: TestResult[]
+    syntheticResults?: TestResult[]
     comparison: {
       accuracyDifference: number
       agreementRate: number
+      syntheticAccuracyDiff?: number
+      syntheticAgreementRate?: number
       detailedComparison: Array<{
         scenarioId: string
         mockPassed: boolean
         realLLMPassed: boolean
+        syntheticPassed?: boolean
         accuracyDiff: number
+        syntheticAccuracyDiff?: number
         agreement: boolean
+        syntheticAgreement?: boolean
       }>
     }
   }> {
     if (options.verbose) {
-      console.log('Running comparative tests (Mock vs Real LLM)...')
+      console.log(`Running comparative tests (Mock vs Real LLM${options.useSyntheticSites ? ' vs Synthetic' : ''})...`)
     }
 
     // Run tests with mock provider
@@ -604,32 +672,65 @@ class TestFramework {
       useRealLLM: true
     })
 
+    // Run tests with synthetic sites if requested
+    let syntheticResults: TestResult[] | undefined
+    if (options.useSyntheticSites) {
+      syntheticResults = await this.runAllTests({
+        ...options,
+        useSyntheticSites: true,
+        useRealLLM: false // Use mock for synthetic to isolate testing layer changes
+      })
+    }
+
     // Calculate comparison metrics
     const mockAccuracy = mockResults.reduce((sum, r) => sum + r.details.accuracy, 0) / mockResults.length
     const realLLMAccuracy = realLLMResults.reduce((sum, r) => sum + r.details.accuracy, 0) / realLLMResults.length
     const accuracyDifference = realLLMAccuracy - mockAccuracy
+    
+    let syntheticAccuracyDiff: number | undefined
+    let syntheticAgreementRate: number | undefined
+    if (syntheticResults) {
+      const syntheticAccuracy = syntheticResults.reduce((sum, r) => sum + r.details.accuracy, 0) / syntheticResults.length
+      syntheticAccuracyDiff = syntheticAccuracy - mockAccuracy
+    }
 
     const detailedComparison = mockResults.map((mockResult, index) => {
       const realLLMResult = realLLMResults[index]
+      const syntheticResult = syntheticResults?.[index]
       const agreement = mockResult.passed === realLLMResult.passed
       
-      return {
+      const comparison: any = {
         scenarioId: mockResult.scenarioId,
         mockPassed: mockResult.passed,
         realLLMPassed: realLLMResult.passed,
         accuracyDiff: realLLMResult.details.accuracy - mockResult.details.accuracy,
         agreement
       }
+      
+      if (syntheticResult) {
+        comparison.syntheticPassed = syntheticResult.passed
+        comparison.syntheticAccuracyDiff = syntheticResult.details.accuracy - mockResult.details.accuracy
+        comparison.syntheticAgreement = mockResult.passed === syntheticResult.passed
+      }
+      
+      return comparison
     })
 
     const agreementRate = detailedComparison.filter(c => c.agreement).length / detailedComparison.length
+    
+    if (syntheticResults) {
+      syntheticAgreementRate = detailedComparison.filter(c => c.syntheticAgreement).length / detailedComparison.length
+    }
 
     return {
       mockResults,
       realLLMResults,
+      syntheticResults,
       comparison: {
         accuracyDifference,
         agreementRate,
+        syntheticAccuracyDiff,
+        syntheticAgreementRate,
         detailedComparison
       }
     }

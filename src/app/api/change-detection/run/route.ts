@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { pageId, companyId, runType = 'manual', testMode = false } = body
+    const { pageId, companyId, runType = 'manual', testMode = false, options } = body
 
     // Validate runType
     if (!['manual', 'scheduled', 'test'].includes(runType)) {
@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
     // Handle test mode
     if (testMode) {
       console.log('Running in test mode - using mock scenarios')
-      const testResults = await testFramework.runAllTests({useRealLLM: true, verbose: true})
+      const testResults = await testFramework.runAllTests({
+        useRealLLM: true, 
+        verbose: true,
+        useSyntheticSites: options?.useSyntheticSites || false
+      })
       const report = testFramework.generateTestReport(testResults)
       
       return NextResponse.json({
