@@ -5,6 +5,7 @@ import { Play, Square, TestTube, Activity, AlertCircle, CheckCircle2, Clock, Zap
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { TestResult } from "@/lib/test-scenarios"
+import { InstagramDetection } from "./InstagramDetection"
 
 interface SystemHealth {
   totalActivePages: number
@@ -58,6 +59,24 @@ export function ChangeDetectionPanel() {
   const [useSyntheticSites, setUseSyntheticSites] = React.useState(false)
   const [sendTestEmails, setSendTestEmails] = React.useState(false)
   const [testUserEmail, setTestUserEmail] = React.useState('')
+  const [companies, setCompanies] = React.useState<Array<{ id: string; name: string }>>([])
+
+  // Fetch companies for Instagram detection
+  React.useEffect(() => {
+    fetchCompanies()
+  }, [])
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch("/api/competitors")
+      if (response.ok) {
+        const data = await response.json()
+        setCompanies(data.map((company: { id: string; name: string }) => ({ id: company.id, name: company.name })))
+      }
+    } catch (error) {
+      console.error('Failed to fetch companies:', error)
+    }
+  }
 
   // Fetch system health on component mount
   React.useEffect(() => {
@@ -324,6 +343,9 @@ export function ChangeDetectionPanel() {
           </div>
         </div>
       </div>
+
+      {/* Instagram Detection */}
+      <InstagramDetection companies={companies} />
 
       {/* Last Run Results */}
       {lastRun && (

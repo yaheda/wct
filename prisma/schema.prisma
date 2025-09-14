@@ -42,6 +42,7 @@ model Company {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   pages         MonitoredPage[]
   changes       SaasChange[]
+  socialProfiles SocialProfile[]
   
   @@map("companies")
 }
@@ -211,4 +212,39 @@ model Notification {
   
   @@index([userId, sentAt])
   @@map("notifications")
+}
+
+model SocialProfile {
+  id          String   @id @default(cuid())
+  companyId   String
+  platform    String   // instagram, twitter, facebook, tiktok, youtube, linkedin
+  handle      String
+  url         String?
+  isActive    Boolean  @default(true)
+  lastChecked DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  snapshots   SocialSnapshot[]
+
+  @@unique([companyId, platform])
+  @@map("social_profiles")
+}
+
+model SocialSnapshot {
+  id         String   @id @default(cuid())
+  profileId  String
+  capturedAt DateTime @default(now())
+  metrics    Json?
+  raw        Json?
+  runId      String?
+  datasetId  String?
+  actorId    String?
+  notes      String?
+
+  profile    SocialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, capturedAt])
+  @@map("social_snapshots")
 }

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Trash2, ExternalLink, Globe, Target, Edit, Pause, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EditCompetitorDialog } from "./EditCompetitorDialog"
+import { CompetitorInstagramSetup } from "./CompetitorInstagramSetup"
 
 interface MonitoredPage {
   id: string
@@ -176,6 +177,12 @@ export function CompetitorList({ websites: companies, onWebsiteDeleted, onRefres
                 <p className="mt-2 text-xs text-muted-foreground">
                   Added {formatDate(company.createdAt)}
                 </p>
+
+                {/* Instagram Setup */}
+                <CompetitorInstagramSetup 
+                  companyId={company.id}
+                  companyName={company.name}
+                />
               </div>
 
               <div className="flex items-center space-x-2 ml-4">
