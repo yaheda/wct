@@ -9,6 +9,7 @@ A specialized monitoring service that tracks SaaS websites for pricing changes, 
 - **Primary**: 50 active SaaS companies monitoring 500+ competitor websites within 3 months
 - **Secondary**: 90%+ accuracy in detecting meaningful SaaS-related changes (pricing, features, headlines)
 - **Tertiary**: Average user monitors 8-12 competitor websites actively
+- **Social Media**: 30+ companies using Instagram monitoring, average 5+ competitor social profiles per user
 
 ### MVP Timeline
 **8 weeks** from development start to production launch
@@ -217,6 +218,63 @@ Add to roadmap review: [link]
 - Feature gap analysis with suggested actions
 - Export functionality for team sharing and presentations
 
+### 4.6 Social Media Profile Monitoring
+**Epic**: Monitor competitor social media presence and posting activity
+
+**User Stories:**
+- As a user, I can add Instagram handles for my competitors
+- As a user, I can manually scrape competitor Instagram posts and engagement metrics
+- As a user, I can view recent posts, captions, and comment counts in one dashboard
+- As a user, I can track competitor posting frequency and engagement patterns
+- As a user, I can batch process multiple competitor social profiles at once
+
+**Acceptance Criteria:**
+- Instagram handle setup and validation for each competitor
+- Manual and batch scraping of Instagram posts using Apify integration
+- Post data collection including captions, timestamps, engagement metrics, and recent comments
+- Social media dashboard showing recent activity across all monitored competitors
+- Data persistence for historical social media activity tracking
+
+**Current Implementation Status:**
+- ✅ Instagram profile setup and management UI
+- ✅ Apify-based Instagram scraping infrastructure
+- ✅ Database models for social profiles and post snapshots
+- ✅ Manual scraping with real-time results display
+- 🔄 **Missing**: Scheduled automatic scraping (cron job implementation needed)
+- 🔄 **Missing**: Email notifications for new social media activity
+- 📋 **Future**: LLM-based social media change detection and analysis
+
+**Technical Implementation:**
+```javascript
+// Database Models
+SocialProfile: {
+  platform: 'instagram' | 'twitter' | 'facebook' | 'linkedin',
+  handle: string,
+  url: string,
+  companyId: string,
+  isActive: boolean,
+  lastChecked: DateTime
+}
+
+SocialSnapshot: {
+  profileId: string,
+  capturedAt: DateTime,
+  metrics: {
+    postsCount: number,
+    posts: InstagramPost[]
+  },
+  raw: InstagramPost[]
+}
+
+InstagramPost: {
+  caption: string,
+  url: string,
+  timestamp: string,
+  commentsCount: number,
+  latestComments: Comment[]
+}
+```
+
 ---
 
 ## 5. SaaS-Specific Technical Requirements
@@ -303,6 +361,33 @@ CREATE TABLE saas_changes (
   competitive_analysis TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Social media profiles for competitors
+CREATE TABLE social_profiles (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER REFERENCES companies(id),
+  platform VARCHAR(50) NOT NULL, -- instagram, twitter, facebook, linkedin, tiktok, youtube
+  handle VARCHAR(255) NOT NULL,
+  url TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  last_checked TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(company_id, platform)
+);
+
+-- Social media data snapshots
+CREATE TABLE social_snapshots (
+  id SERIAL PRIMARY KEY,
+  profile_id INTEGER REFERENCES social_profiles(id),
+  captured_at TIMESTAMP DEFAULT NOW(),
+  metrics JSONB, -- Post counts, engagement metrics, etc.
+  raw JSONB, -- Raw scraped data (posts, comments, etc.)
+  run_id VARCHAR(255), -- Reference to scraping run
+  dataset_id VARCHAR(255), -- Apify dataset ID
+  actor_id VARCHAR(255), -- Apify actor ID
+  notes TEXT
+);
 ```
 
 ---
@@ -384,9 +469,11 @@ PRO ($79/month)
 
 ### 8.2 Feature Effectiveness
 - [ ] 90%+ accuracy in detecting SaaS pricing changes
-- [ ] 85%+ accuracy in detecting feature announcements  
+- [ ] 85%+ accuracy in detecting feature announcements
 - [ ] <10% false positive rate for meaningful changes
 - [ ] Users act on 60%+ of alerts (engagement tracking)
+- [ ] Social media data collection success rate >95% (Instagram scraping reliability)
+- [ ] Average 20+ posts collected per competitor social profile monthly
 
 ### 8.3 Business Metrics
 - [ ] $5,000 MRR within 3 months of launch
@@ -459,6 +546,7 @@ PRO ($79/month)
 ### Phase 4: SaaS Dashboard & Launch (Weeks 7-8)
 - [ ] Competitive intelligence dashboard with SaaS insights
 - [ ] Export functionality for team sharing
+- [ ] Social media profile monitoring (Instagram setup and manual scraping)
 - [ ] Beta launch in SaaS communities
 - [ ] User feedback collection and iteration
 
@@ -470,6 +558,8 @@ PRO ($79/month)
 - Advanced pricing analysis (plan comparisons, feature matrices)
 - Integration announcements and partnership tracking
 - Funding/acquisition news monitoring
+- **Scheduled social media scraping** (automated Instagram monitoring with cron jobs)
+- **Social media email notifications** (alerts for new posts and engagement spikes)
 - Slack/Teams integrations for team alerts
 
 ### Advanced Features (Months 4-6)
@@ -478,5 +568,8 @@ PRO ($79/month)
 - API for product management tool integrations
 - Custom competitor categories and tagging
 - Automated competitive analysis reports
+- **Multi-platform social media monitoring** (Twitter, LinkedIn, Facebook expansion)
+- **Social media change detection** (LLM analysis of posts for announcements and campaigns)
+- **Social media competitive insights** (engagement pattern analysis and posting strategy recommendations)
 
 This SaaS-focused approach creates a specialized, valuable tool for a well-defined market with clear willingness to pay and strong network effects within the SaaS community.
