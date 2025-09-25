@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { scraper } from './scraper'
+import { apifyService, CompetitorUrls } from './apify-service'
 import { contentProcessor } from './content-processor'
 import { changeDetector } from './change-detector'
 import { notificationEngine } from './notification-engine'
@@ -58,132 +58,177 @@ class ChangeDetectionService {
         errors: []
       }
 
-      // Process each page
-      for (const page of pages) {
+      // Group pages by company for efficient batch processing
+      const competitorGroups = this.groupPagesByCompany(pages)
+      console.log(`Processing ${competitorGroups.length} companies with ${pages.length} total pages`)
+
+      // Process each competitor's pages using Apify
+      for (const competitorGroup of competitorGroups) {
         try {
-          console.log(`Processing page: ${page.url}`)
-          
-          // Get the latest snapshot for comparison
-          const latestSnapshot = await db.pageSnapshot.findFirst({
-            where: { pageId: page.id, status: 'active' },
-            orderBy: { createdAt: 'desc' }
-          })
+          console.log(`Processing competitor: ${competitorGroup.companyName} (${competitorGroup.urls.length} pages)`)
 
-          // Scrape current content
-          const scrapingResult = await scraper.scrapePage(page.url, {
-            timeout: 30000,
-            waitForNetworkIdle: true
-          })
-
-          if (scrapingResult.error) {
-            results.errors.push(`Failed to scrape ${page.url}: ${scrapingResult.error}`)
-            results.summary.errors++
-            continue
+          // Get latest snapshots for comparison
+          const pageSnapshots = new Map()
+          for (const url of competitorGroup.urls) {
+            const page = pages.find(p => p.url === url)
+            if (page) {
+              const latestSnapshot = await db.pageSnapshot.findFirst({
+                where: { pageId: page.id, status: 'active' },
+                orderBy: { createdAt: 'desc' }
+              })
+              pageSnapshots.set(url, { page, snapshot: latestSnapshot })
+            }
           }
 
-          // Process the new content
-          const newProcessedContent = await contentProcessor.processContent(
-            scrapingResult.content,
-            scrapingResult.textContent
-          )
-
-          // Create new snapshot
-          const newSnapshot = await db.pageSnapshot.create({
-            data: {
-              pageId: page.id,
-              content: scrapingResult.content,
-              contentHash: newProcessedContent.contentHash,
-              textContent: scrapingResult.textContent,
-              metadata: {
-                ...scrapingResult.metadata,
-                extractedData: JSON.parse(JSON.stringify(newProcessedContent.extractedData))
-              }
-            }
+          // Scrape all pages for this competitor using Apify
+          const scrapingResults = await apifyService.scrapeCompetitorPages([competitorGroup], {
+            maxCrawlDepth: 0,
+            maxCrawlPages: competitorGroup.urls.length,
+            timeout: 60000,
+            waitForNetworkIdle: true,
+            respectRobots: true
           })
 
-          results.summary.pagesChecked++
+          // Process each scraped page
+          for (const scrapingResult of scrapingResults) {
+            const pageData = pageSnapshots.get(scrapingResult.url)
+            if (!pageData) continue
 
-          // If we have a previous snapshot, compare for changes
-          if (latestSnapshot) {
-            const oldProcessedContent = await contentProcessor.processContent(
-              latestSnapshot.content,
-              latestSnapshot.textContent || ''
-            )
+            const { page, snapshot } = pageData
 
-            // Detect changes
-            const changeResult = await changeDetector.detectChanges(
-              page.company.name,
-              page.pageType,
-              oldProcessedContent,
-              newProcessedContent
-            )
+            try {
+              if (scrapingResult.error) {
+                results.errors.push(`Failed to scrape ${scrapingResult.url}: ${scrapingResult.error}`)
+                results.summary.errors++
+                continue
+              }
 
-            // If significant change detected, record it
-            if (changeResult.hasSignificantChange) {
-              const change = await db.saasChange.create({
+              // Process the new content using the text-only method
+              const newProcessedContent = await contentProcessor.processTextOnlyContent(
+                scrapingResult.text,
+                scrapingResult.title
+              )
+
+              // Create new snapshot
+              await db.pageSnapshot.create({
                 data: {
-                  companyId: page.companyId,
                   pageId: page.id,
-                  detectionRunId: runId,
-                  changeType: changeResult.changeType,
-                  changeSummary: changeResult.changeSummary,
-                  oldValue: changeResult.details.oldValue,
-                  newValue: changeResult.details.newValue,
-                  impactLevel: changeResult.details.impactLevel,
-                  confidence: changeResult.confidence,
-                  competitiveAnalysis: changeResult.competitiveAnalysis
+                  content: scrapingResult.text, // Store the text content as HTML content for now
+                  contentHash: newProcessedContent.contentHash,
+                  textContent: scrapingResult.text,
+                  metadata: {
+                    ...scrapingResult.metadata,
+                    extractedData: JSON.parse(JSON.stringify(newProcessedContent.extractedData)),
+                    source: 'apify',
+                    title: scrapingResult.title
+                  }
                 }
               })
 
-              results.changes.push({
-                pageId: page.id,
-                url: page.url,
-                changeType: changeResult.changeType,
-                changeSummary: changeResult.changeSummary,
-                impactLevel: changeResult.details.impactLevel
-              })
+              results.summary.pagesChecked++
 
-              results.summary.changesFound++
-
-              console.log(`Change detected for ${page.url}: ${changeResult.changeSummary}`)
-
-              // Trigger notification processing
-              try {
-                const notificationResult = await notificationEngine.processChange({
-                  id: change.id,
-                  companyId: page.companyId,
-                  pageId: page.id,
-                  changeType: changeResult.changeType,
-                  changeSummary: changeResult.changeSummary,
-                  oldValue: changeResult.details.oldValue,
-                  newValue: changeResult.details.newValue,
-                  impactLevel: changeResult.details.impactLevel,
-                  confidence: changeResult.confidence,
-                  competitiveAnalysis: changeResult.competitiveAnalysis,
-                  detectedAt: new Date()
-                })
-
-                if (notificationResult.success && notificationResult.notifications > 0) {
-                  console.log(`Queued ${notificationResult.notifications} notification(s) for change ${change.id}`)
-                } else if (!notificationResult.success) {
-                  console.error(`Notification processing failed for change ${change.id}:`, notificationResult.errors)
+              // If we have a previous snapshot, compare for changes
+              if (snapshot) {
+                // Process old content based on its source
+                let oldProcessedContent
+                if (snapshot.metadata && (snapshot.metadata as Record<string, unknown>).source === 'apify') {
+                  // Old content was from Apify
+                  oldProcessedContent = await contentProcessor.processTextOnlyContent(
+                    snapshot.textContent || '',
+                    (snapshot.metadata as Record<string, unknown>)?.title as string
+                  )
+                } else {
+                  // Old content was from Playwright scraper
+                  oldProcessedContent = await contentProcessor.processContent(
+                    snapshot.content,
+                    snapshot.textContent || ''
+                  )
                 }
-              } catch (notificationError) {
-                console.error(`Error triggering notifications for change ${change.id}:`, notificationError)
+
+                // Detect changes
+                const changeResult = await changeDetector.detectChanges(
+                  page.company.name,
+                  page.pageType,
+                  oldProcessedContent,
+                  newProcessedContent
+                )
+
+                // If significant change detected, record it
+                if (changeResult.hasSignificantChange) {
+                  const change = await db.saasChange.create({
+                    data: {
+                      companyId: page.companyId,
+                      pageId: page.id,
+                      detectionRunId: runId,
+                      changeType: changeResult.changeType,
+                      changeSummary: changeResult.changeSummary,
+                      oldValue: changeResult.details.oldValue,
+                      newValue: changeResult.details.newValue,
+                      impactLevel: changeResult.details.impactLevel,
+                      confidence: changeResult.confidence,
+                      competitiveAnalysis: changeResult.competitiveAnalysis
+                    }
+                  })
+
+                  results.changes.push({
+                    pageId: page.id,
+                    url: page.url,
+                    changeType: changeResult.changeType,
+                    changeSummary: changeResult.changeSummary,
+                    impactLevel: changeResult.details.impactLevel
+                  })
+
+                  results.summary.changesFound++
+
+                  console.log(`Change detected for ${page.url}: ${changeResult.changeSummary}`)
+
+                  // Trigger notification processing
+                  try {
+                    const notificationResult = await notificationEngine.processChange({
+                      id: change.id,
+                      companyId: page.companyId,
+                      pageId: page.id,
+                      changeType: changeResult.changeType,
+                      changeSummary: changeResult.changeSummary,
+                      oldValue: changeResult.details.oldValue,
+                      newValue: changeResult.details.newValue,
+                      impactLevel: changeResult.details.impactLevel,
+                      confidence: changeResult.confidence,
+                      competitiveAnalysis: changeResult.competitiveAnalysis,
+                      detectedAt: new Date()
+                    })
+
+                    if (notificationResult.success && notificationResult.notifications > 0) {
+                      console.log(`Queued ${notificationResult.notifications} notification(s) for change ${change.id}`)
+                    } else if (!notificationResult.success) {
+                      console.error(`Notification processing failed for change ${change.id}:`, notificationResult.errors)
+                    }
+                  } catch (notificationError) {
+                    console.error(`Error triggering notifications for change ${change.id}:`, notificationError)
+                  }
+                }
               }
+
+              // Update page's lastChecked timestamp
+              await db.monitoredPage.update({
+                where: { id: page.id },
+                data: { lastChecked: new Date() }
+              })
+
+            } catch (error) {
+              console.error(`Error processing page ${scrapingResult.url}:`, error)
+              results.errors.push(`Error processing ${scrapingResult.url}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+              results.summary.errors++
             }
           }
-
-          // Update page's lastChecked timestamp
-          await db.monitoredPage.update({
-            where: { id: page.id },
-            data: { lastChecked: new Date() }
-          })
 
         } catch (error) {
-          console.error(`Error processing page ${page.url}:`, error)
-          results.errors.push(`Error processing ${page.url}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-          results.summary.errors++
+          console.error(`Error processing competitor ${competitorGroup.companyName}:`, error)
+          // Add errors for all URLs in this competitor group
+          competitorGroup.urls.forEach(url => {
+            results.errors.push(`Error processing ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            results.summary.errors++
+          })
         }
       }
 
@@ -314,6 +359,27 @@ class ChangeDetectionService {
     })
   }
 
+  private groupPagesByCompany(pages: Array<{ companyId: string; company: { name: string }; url: string }>): CompetitorUrls[] {
+    const companyGroups = new Map<string, CompetitorUrls>()
+
+    for (const page of pages) {
+      const companyId = page.companyId
+      const companyName = page.company.name
+
+      if (!companyGroups.has(companyId)) {
+        companyGroups.set(companyId, {
+          companyId,
+          companyName,
+          urls: []
+        })
+      }
+
+      companyGroups.get(companyId)!.urls.push(page.url)
+    }
+
+    return Array.from(companyGroups.values())
+  }
+
   async getSystemHealth() {
     const now = new Date()
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
@@ -388,7 +454,7 @@ class ChangeDetectionService {
       },
       performance: {
         averageRunTimeSeconds: Math.round(averageRunTimeMs / 1000),
-        scraperStats: scraper.getStats()
+        scraperStats: apifyService.getStats()
       },
       status: failedRuns / Math.max(recentRuns, 1) < 0.1 ? 'healthy' : 'degraded'
     }

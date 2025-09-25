@@ -170,7 +170,7 @@ class ContentProcessor {
   async processContent(content: string, textContent: string): Promise<ProcessedContent> {
     const contentHash = this.generateContentHash(content)
     const cleanedText = this.cleanTextContent(textContent)
-    
+
     // Extract structured data
     const pricing = this.extractPricingData(cleanedText)
     const features = this.extractFeatureData(cleanedText)
@@ -187,6 +187,55 @@ class ContentProcessor {
         metadata
       }
     }
+  }
+
+  // New method specifically for Apify text-only content
+  async processTextOnlyContent(textContent: string, title?: string): Promise<ProcessedContent> {
+    // For text-only content, use the text as both content and textContent for hash generation
+    const contentHash = this.generateContentHash(textContent)
+    const cleanedText = this.cleanTextContent(textContent)
+
+    // Extract structured data from text
+    const pricing = this.extractPricingData(cleanedText)
+    const features = this.extractFeatureData(cleanedText)
+    const headlines = this.extractHeadlinesFromText(cleanedText, title)
+    const metadata = this.extractMetadata(cleanedText)
+
+    return {
+      contentHash,
+      cleanedText,
+      extractedData: {
+        pricing,
+        features,
+        headlines,
+        metadata
+      }
+    }
+  }
+
+  // Extract headlines from text content only (for Apify)
+  private extractHeadlinesFromText(textContent: string, title?: string): string[] {
+    const headlines: string[] = []
+
+    // Add the page title as the primary headline if available
+    if (title && title.length > 5 && title.length < 200) {
+      headlines.push(title)
+    }
+
+    // Extract potential headlines from text (lines that look like titles)
+    const textLines = textContent.split('\n')
+    for (const line of textLines.slice(0, 50)) { // Only check first 50 lines
+      const trimmed = line.trim()
+      // Look for title-like patterns: not too long, proper case, not too short
+      if (trimmed.length > 10 && trimmed.length < 100 &&
+          /^[A-Z]/.test(trimmed) &&
+          !trimmed.includes('.') &&
+          trimmed.split(' ').length < 15) {
+        headlines.push(trimmed)
+      }
+    }
+
+    return [...new Set(headlines)].slice(0, 10) // Remove duplicates and limit
   }
 
   // Compare two processed contents to identify what changed
