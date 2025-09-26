@@ -9,8 +9,7 @@ const db = new PrismaClient()
 export interface ChangeDetectionOptions {
   pageId?: string
   companyId?: string
-  runType: 'manual' | 'scheduled' | 'test'
-  testMode?: boolean
+  runType: 'manual' | 'scheduled'
 }
 
 export interface ChangeDetectionServiceResult {
@@ -33,6 +32,7 @@ export interface ChangeDetectionServiceResult {
 
 class ChangeDetectionService {
   async runDetection(options: ChangeDetectionOptions): Promise<ChangeDetectionServiceResult> {
+    debugger;
     const runId = await this.createDetectionRun(options)
     
     try {

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 3005",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev --port 3005",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint"

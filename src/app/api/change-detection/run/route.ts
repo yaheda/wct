@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { changeDetectionService } from '@/lib/change-detection-service'
-import { testFramework } from '@/lib/test-scenarios'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,46 +10,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { pageId, companyId, runType = 'manual', testMode = false, options } = body
+    const { pageId, companyId, runType = 'manual' } = body
 
     // Validate runType
-    if (!['manual', 'scheduled', 'test'].includes(runType)) {
+    if (!['manual', 'scheduled'].includes(runType)) {
       return NextResponse.json({ error: 'Invalid run type' }, { status: 400 })
     }
 
-    // Handle test mode
-    if (testMode) {
-      console.log('Running in test mode - using mock scenarios')
-      const testResults = await testFramework.runAllTests({
-        useRealLLM: true, 
-        verbose: true,
-        useSyntheticSites: options?.useSyntheticSites || false,
-        sendTestEmails: options?.sendTestEmails || false,
-        testUserEmail: options?.testUserEmail
-      })
-      const report = testFramework.generateTestReport(testResults)
-      
-      return NextResponse.json({
-        runId: 'test-run-' + Date.now(),
-        status: 'completed',
-        testMode: true,
-        summary: {
-          pagesChecked: report.summary.total,
-          changesFound: report.summary.passed,
-          errors: report.summary.failed
-        },
-        testReport: report,
-        changes: [],
-        errors: []
-      })
-    }
 
-    // Run actual change detection
+    // Run change detection
     const result = await changeDetectionService.runDetection({
       pageId,
       companyId,
-      runType,
-      testMode: false
+      runType
     })
 
     return NextResponse.json(result)

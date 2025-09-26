@@ -67,7 +67,7 @@ class ApifyService {
     )
 
     // Configure input for the Website Content Crawler
-    const input = {
+    const inputAA = {
       startUrls: allUrls,
       maxCrawlDepth: options.maxCrawlDepth ?? 0, // No crawling, just specific pages
       maxCrawlPages: options.maxCrawlPages ?? allUrls.length,
@@ -133,6 +133,47 @@ class ApifyService {
       `
     }
 
+    const input = {
+        "aggressivePrune": false,
+        "blockMedia": true,
+        "clickElementsCssSelector": "[aria-expanded=\"false\"]",
+        "clientSideMinChangePercentage": 15,
+        "crawlerType": "playwright:adaptive",
+        "debugLog": false,
+        "debugMode": false,
+        "expandIframes": true,
+        "ignoreCanonicalUrl": false,
+        "ignoreHttpsErrors": false,
+        "keepUrlFragments": false,
+        "maxCrawlDepth": 0,
+        "maxCrawlPages": 2,
+        "proxyConfiguration": {
+            "useApifyProxy": true,
+            "apifyProxyGroups": []
+        },
+        "readableTextCharThreshold": 100,
+        "removeCookieWarnings": true,
+        "removeElementsCssSelector": "nav, footer, script, style, noscript, svg, img[src^='data:'],\n[role=\"alert\"],\n[role=\"banner\"],\n[role=\"dialog\"],\n[role=\"alertdialog\"],\n[role=\"region\"][aria-label*=\"skip\" i],\n[aria-modal=\"true\"]",
+        "renderingTypeDetectionPercentage": 10,
+        "respectRobotsTxtFile": true,
+        "saveFiles": false,
+        "saveHtml": false,
+        "saveHtmlAsFile": false,
+        "saveMarkdown": true,
+        "saveScreenshots": false,
+        "startUrls": [
+            {
+                "url": "https://www.ideabrowser.com/",
+                "method": "GET"
+            },
+            {
+                "url": "https://www.ideabrowser.com/pricing",
+                "method": "GET"
+            }
+        ],
+        "useSitemaps": false
+    }
+
     const startTime = Date.now()
 
     try {
@@ -140,7 +181,7 @@ class ApifyService {
 
       // Run the Website Content Crawler
       const run = await this.client!.actor(this.WEBSITE_CONTENT_CRAWLER_ID).call(input)
-
+      debugger;
       console.log(`Apify crawl completed. Run ID: ${run.id}`)
 
       // Get the results from the default dataset
