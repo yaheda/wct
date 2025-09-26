@@ -109,6 +109,7 @@ export async function detectSaasPages(domain: string): Promise<DetectedPages> {
   const foundPages: SaasPageType[] = []
   const allPatterns = Object.entries(SAAS_PAGE_PATTERNS)
   
+  // TODO: fix auto detection of pages
   for (const [pageType, patterns] of allPatterns) {
     for (const pattern of patterns) {
       const urlToTest = domain.endsWith('/') ? 

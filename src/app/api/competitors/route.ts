@@ -103,7 +103,8 @@ export async function POST(request: NextRequest) {
 
     // Parse and create monitored pages
     const pagePromises = selectedPages.map(async (pageKey: string) => {
-      const [pageType, pageUrl] = pageKey.split(':')
+      const [pageType, ...urlParts] = pageKey.split(':')
+      const pageUrl = urlParts.join(':')
 
       return db.monitoredPage.create({
         data: {
