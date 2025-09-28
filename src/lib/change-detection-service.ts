@@ -3,6 +3,7 @@ import { apifyService, CompetitorUrls } from './apify-service'
 import { contentProcessor } from './content-processor'
 import { changeDetector } from './change-detector'
 import { notificationEngine } from './notification-engine'
+import { normalizeUrl } from './utils'
 
 const db = new PrismaClient()
 
@@ -76,7 +77,9 @@ class ChangeDetectionService {
                 where: { pageId: page.id, status: 'active' },
                 orderBy: { createdAt: 'desc' }
               })
-              pageSnapshots.set(url, { page, snapshot: latestSnapshot })
+              // Normalize the URL before using as key
+              const normalizedUrl = normalizeUrl(url)
+              pageSnapshots.set(normalizedUrl, { page, snapshot: latestSnapshot })
             }
           }
 
@@ -88,10 +91,12 @@ class ChangeDetectionService {
             waitForNetworkIdle: true,
             respectRobots: true
           })
-
+          debugger;
           // Process each scraped page
           for (const scrapingResult of scrapingResults) {
-            const pageData = pageSnapshots.get(scrapingResult.url)
+            // Normalize the scraped URL before lookup
+            const normalizedScrapedUrl = normalizeUrl(scrapingResult.url)
+            const pageData = pageSnapshots.get(normalizedScrapedUrl)
             if (!pageData) continue
 
             const { page, snapshot } = pageData

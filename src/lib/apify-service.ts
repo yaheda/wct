@@ -163,7 +163,7 @@ class ApifyService {
         "saveScreenshots": false,
         "startUrls": [
             {
-                "url": "https://www.ideabrowser.com/",
+                "url": "https://ideabrowser.com",
                 "method": "GET"
             },
             {
