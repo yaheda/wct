@@ -23,25 +23,23 @@ export function Navbar() {
           </div>
 
           {/* Navigation Links */}
-          {process.env.NODE_ENV === "development" && (
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Features
-            </Link>
-            <Link href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </Link>
-            <Button 
-              variant="ghost" 
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors p-0 h-auto"
-              onClick={() => setIsWaitlistOpen(true)}
-            >
-              Join Waitlist
-            </Button>
-          </div>
+          {process.env.NODE_ENV === "development" && (<>
+            <div className="hidden md:flex items-center space-x-8">
+              <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+              <Link href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
+              </Link>
+              <Button 
+                variant="ghost" 
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors p-0 h-auto"
+                onClick={() => setIsWaitlistOpen(true)}
+              >
+                Join Waitlist
+              </Button>
+            </div>
 
-          {/* CTA Buttons */}
-          {process.env.NODE_ENV === "development" && (
             <div className="flex items-center space-x-4">
               {!isSignedIn ? (
                 <>
@@ -73,7 +71,7 @@ export function Navbar() {
                 </>
               )}
             </div>
-          )}
+            </>)}
         </div>
       </div>
 
