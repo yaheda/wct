@@ -40,37 +40,39 @@ export function Navbar() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex items-center space-x-4">
-            {!isSignedIn ? (
-              <>
-                <SignInButton mode="modal">
-                  <Button variant="outline" size="sm">
-                    Login
-                  </Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <Button size="sm">
-                    Join up
-                  </Button>
-                </SignUpButton>
-              </>
-            ) : (
-              <>
-                <Link href="/dashboard">
-                  <Button variant="outline" size="sm">
-                    Dashboard
-                  </Button>
-                </Link>
-                <UserButton 
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-8 h-8"
-                    }
-                  }}
-                />
-              </>
-            )}
-          </div>
+          {process.env.NODE_ENV === "development" && (
+            <div className="flex items-center space-x-4">
+              {!isSignedIn ? (
+                <>
+                  <SignInButton mode="modal">
+                    <Button variant="outline" size="sm">
+                      Login
+                    </Button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <Button size="sm">
+                      Join up
+                    </Button> 
+                  </SignUpButton>
+                </>
+              ) : (
+                <>
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="sm">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-8 h-8"
+                      }
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

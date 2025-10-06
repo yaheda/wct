@@ -42,7 +42,7 @@ export function Logo({ className = "", size = 'md', showText = true }: LogoProps
       </div>
       {showText && (
         <span className={`font-bold text-primary ${textSizeClasses[size]}`}>
-          Website Change Alert
+          Simple Competitor Analysis
         </span>
       )}
     </div>
