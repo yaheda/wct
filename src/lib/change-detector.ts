@@ -71,6 +71,41 @@ class ChangeDetector {
     oldContent: ProcessedContent,
     newContent: ProcessedContent
   ): string {
+
+
+    debugger;
+
+
+    return `You are a SaaS competitive intelligence expert. Analyze these webpage contents for meaningful business changes.
+
+COMPETITOR: ${competitorName}
+PAGE TYPE: ${pageType}
+
+OLD CONTENT SNAPSHOT:
+${oldContent.cleanedText}
+
+NEW CONTENT SNAPSHOT:
+${newContent.cleanedText}
+
+ANALYSIS FOCUS:
+- Pricing changes (plans, amounts, billing terms, feature inclusions)
+- New feature announcements or removals
+- Product positioning and messaging changes
+- Integration announcements
+- Security/compliance updates
+
+Respond with JSON:
+{
+  "hasSignificantChange": boolean,
+  "changeSummary": "specific, actionable summary",
+  "details": {
+    "oldValue": "before state if applicable",
+    "newValue": "after state if applicable", 
+  },
+  "confidence": "high|medium|low",
+  "competitiveAnalysis": "brief competitive implications (optional)"
+}
+`;
     return `You are a SaaS competitive intelligence expert. Analyze these webpage contents for meaningful business changes.
 
 COMPETITOR: ${competitorName}
