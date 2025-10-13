@@ -167,8 +167,8 @@ class ChangeDetectionService {
                       detectionRunId: runId,
                       changeType: changeResult.changeType,
                       changeSummary: changeResult.changeSummary,
-                      oldValue: changeResult.details.oldValue,
-                      newValue: changeResult.details.newValue,
+                      oldValue: JSON.stringify(changeResult.details.oldValue),
+                      newValue: JSON.stringify(changeResult.details.newValue),
                       impactLevel: changeResult.details.impactLevel,
                       confidence: changeResult.confidence,
                       competitiveAnalysis: changeResult.competitiveAnalysis
