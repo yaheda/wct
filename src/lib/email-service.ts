@@ -52,6 +52,14 @@ export class EmailService {
         text: options.text
       })
 
+      // const result = await resend.emails.send({
+      //   from: options.from || this.fromEmail,
+      //   to: 'yaheda.a@gmail.com', // Use a real email you can check
+      //   subject: 'Test Email',
+      //   html: '<h1>Test</h1><p>This is a test email.</p>',
+      //   text: 'Test email content'
+      // })
+
       if (result.error) {
         console.error('Email send error:', result.error)
         return { success: false, error: result.error.message }
