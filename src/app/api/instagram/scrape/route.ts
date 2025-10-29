@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { InstagramScraper } from '@/lib/instagram-scraper';
+import { emailService } from '@/lib/email-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,12 +73,48 @@ export async function POST(request: NextRequest) {
         profileId: socialProfile.id,
         capturedAt: new Date(),
         metrics: {
-          postsCount: result.data?.length || 0,
-          posts: result.data || []
+          postsCount: result.data?.length || 0
         },
-        raw: result.data || []
+        raw: result.data as any
       }
     });
+
+    // Extract latest posts with comments for notification
+    const latestPosts = (result.data || []).map((post: any) => ({
+      caption: post.caption || '',
+      commentsCount: post.commentsCount || 0,
+      comments: (post.latestComments || []).map((comment: any) => ({
+        text: comment.text || ''
+      }))
+    }));
+
+    // Queue notification for successful scrape
+    const notificationResult = await emailService.queueNotification(
+      userId,
+      'instagram_scrape_complete',
+      {
+        userId,
+        competitorName: company.name,
+        changeType: 'instagram_scrape',
+        changeSummary: `Instagram profile @${instagramHandle} scraped successfully`,
+        impactLevel: 'medium',
+        pageUrl: socialProfile.url || `https://instagram.com/${instagramHandle}`,
+        pageType: 'social_media',
+        // Instagram-specific variables
+        handle: instagramHandle,
+        postCount: result.data?.length || 0,
+        scrapedAt: new Date().toLocaleString(),
+        profileId: socialProfile.id,
+        companyId: companyId,
+        latestPosts: latestPosts
+      },
+      2, // medium priority
+      new Date() // queue immediately
+    );
+
+    if (!notificationResult.success) {
+      console.warn(`Failed to queue notification for Instagram scrape: ${notificationResult.error}`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -87,7 +124,11 @@ export async function POST(request: NextRequest) {
         handle: instagramHandle,
         url: socialProfile.url
       },
-      snapshotId: snapshot.id
+      snapshotId: snapshot.id,
+      notification: {
+        queued: notificationResult.success,
+        queueId: notificationResult.queueId
+      }
     });
 
   } catch (error) {

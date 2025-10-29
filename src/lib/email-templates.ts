@@ -282,6 +282,187 @@ Manage notification preferences: {{dashboardUrl}}/settings/notifications
     }
   },
 
+  instagram_scrape_complete: {
+    name: 'instagram_scrape_complete',
+    templateType: 'instagram_scrape_complete',
+    subject: '📸 Instagram Profile Scrape Complete - {{handle}}',
+    htmlContent: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instagram Scrape Complete</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .header { background: linear-gradient(135deg, #e1306c 0%, #fd1d1d 100%); color: white; padding: 20px; text-align: center; }
+    .content { padding: 30px; }
+    .success-badge { display: inline-block; background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-bottom: 15px; }
+    .profile-name { color: #1f2937; font-weight: 600; font-size: 18px; }
+    .summary-section { background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    .summary-item:last-child { border-bottom: none; }
+    .summary-label { font-weight: 600; color: #374151; }
+    .summary-value { color: #e1306c; font-weight: 600; }
+    .highlight-section { background-color: #fce7f3; border-left: 4px solid #e1306c; padding: 20px; margin: 20px 0; border-radius: 4px; }
+    .highlight-title { color: #831843; font-weight: 600; margin: 0 0 10px 0; }
+    .cta-button { display: inline-block; background-color: #e1306c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 20px 0; }
+    .posts-section { margin: 30px 0; }
+    .posts-title { color: #374151; font-weight: 600; font-size: 16px; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; }
+    .post-item { background-color: #f9fafb; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #e1306c; }
+    .post-caption { color: #1f2937; font-weight: 500; margin: 0 0 12px 0; word-wrap: break-word; }
+    .comments-container { background-color: #ffffff; padding: 12px; border-radius: 6px; margin-top: 10px; }
+    .comments-label { color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
+    .comment { background-color: #f3f4f6; padding: 8px 12px; margin: 6px 0; border-radius: 4px; color: #4b5563; font-size: 13px; line-height: 1.5; }
+    .comment-empty { color: #9ca3af; font-style: italic; font-size: 13px; }
+    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 style="margin: 0; font-size: 24px;">📸 Instagram Profile Scraped</h1>
+    </div>
+
+    <div class="content">
+      <div class="success-badge">SCRAPE SUCCESSFUL</div>
+
+      <p>Hi {{userName}},</p>
+
+      <p>We've successfully scraped the Instagram profile <strong class="profile-name">@{{handle}}</strong> for your company.</p>
+
+      <div class="summary-section">
+        <h3 style="margin: 0 0 15px 0; color: #374151;">Scrape Summary</h3>
+        <div class="summary-item">
+          <span class="summary-label">Profile Handle:</span>
+          <span class="summary-value">@{{handle}}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Posts Captured:</span>
+          <span class="summary-value">{{postCount}}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Scraped At:</span>
+          <span>{{scrapedAt}}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Company:</span>
+          <span>{{companyName}}</span>
+        </div>
+      </div>
+
+      <div class="posts-section">
+        <h3 class="posts-title">📝 Latest Posts & Comments</h3>
+        {{#latestPosts}}
+        <div class="post-item">
+          <p class="post-caption">{{caption}}</p>
+          <div class="comments-container">
+            <div class="comments-label">Comments ({{commentsCount}})</div>
+            {{#comments}}
+            <div class="comment">{{text}}</div>
+            {{/comments}}
+            {{^comments}}
+            <div class="comment-empty">No comments yet</div>
+            {{/comments}}
+          </div>
+        </div>
+        {{/latestPosts}}
+        {{^latestPosts}}
+        <p style="color: #6b7280; font-style: italic;">No posts available in the scrape.</p>
+        {{/latestPosts}}
+      </div>
+
+      <div class="highlight-section">
+        <h3 class="highlight-title">What's Next?</h3>
+        <p>Your Instagram profile data has been saved to our system. You can now:</p>
+        <ul>
+          <li>View the complete profile snapshot and metrics</li>
+          <li>Compare with previous scrapes to detect changes</li>
+          <li>Monitor engagement metrics over time</li>
+          <li>Set up automated monitoring for this profile</li>
+        </ul>
+      </div>
+
+      <p>
+        <a href="{{viewProfileUrl}}" class="cta-button">View Profile Snapshot →</a>
+      </p>
+
+      <p>
+        <a href="{{companyUrl}}" style="color: #e1306c; text-decoration: none;">View Company Dashboard →</a> |
+        <a href="{{settingsUrl}}" style="color: #e1306c; text-decoration: none;">Manage Social Profiles →</a>
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>This notification was generated by Website Change Alert.<br>
+      <a href="{{dashboardUrl}}/settings/notifications" style="color: #6b7280;">Manage notification preferences</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+    textContent: `
+📸 INSTAGRAM PROFILE SCRAPED SUCCESSFULLY
+
+Hi {{userName}},
+
+We've successfully scraped the Instagram profile @{{handle}} for your company.
+
+SCRAPE SUMMARY:
+• Profile Handle: @{{handle}}
+• Posts Captured: {{postCount}}
+• Scraped At: {{scrapedAt}}
+• Company: {{companyName}}
+
+📝 LATEST POSTS & COMMENTS:
+{{#latestPosts}}
+---
+Post:
+{{caption}}
+
+Comments ({{commentsCount}}):
+{{#comments}}
+  • {{text}}
+{{/comments}}
+{{^comments}}
+  (No comments yet)
+{{/comments}}
+
+{{/latestPosts}}
+{{^latestPosts}}
+No posts available in the scrape.
+{{/latestPosts}}
+
+WHAT'S NEXT?
+Your Instagram profile data has been saved. You can now:
+• View the complete profile snapshot and metrics
+• Compare with previous scrapes to detect changes
+• Monitor engagement metrics over time
+• Set up automated monitoring for this profile
+
+View Profile Snapshot: {{viewProfileUrl}}
+View Company Dashboard: {{companyUrl}}
+Manage Social Profiles: {{settingsUrl}}
+
+---
+This notification was generated by Website Change Alert.
+Manage notification preferences: {{dashboardUrl}}/settings/notifications
+    `,
+    variables: {
+      userName: 'User name',
+      handle: 'Instagram profile handle',
+      postCount: 'Number of posts captured',
+      scrapedAt: 'Timestamp of scrape',
+      companyName: 'Company name',
+      viewProfileUrl: 'URL to view the scraped profile snapshot',
+      companyUrl: 'URL to company dashboard',
+      settingsUrl: 'URL to manage social profiles',
+      dashboardUrl: 'Base dashboard URL',
+      latestPosts: 'Array of post objects with caption, commentsCount, and comments array'
+    }
+  },
+
   weekly_summary: {
     name: 'weekly_summary',
     templateType: 'weekly_summary',
@@ -503,11 +684,11 @@ export async function seedEmailTemplates() {
   console.log('Email templates seeded successfully!')
 }
 
-export async function getTemplate(templateType: 'pricing_alert' | 'feature_alert' | 'weekly_summary') {
+export async function getTemplate(templateType: 'pricing_alert' | 'feature_alert' | 'weekly_summary' | 'instagram_scrape_complete') {
   return await db.emailTemplate.findFirst({
-    where: { 
+    where: {
       templateType,
-      isActive: true 
+      isActive: true
     }
   })
 }

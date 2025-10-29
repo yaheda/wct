@@ -28,6 +28,7 @@ export interface NotificationContext {
   competitiveAnalysis?: string
   pageUrl: string
   pageType: string
+  [key: string]: any // Allow additional fields for template-specific variables
 }
 
 export class EmailService {
@@ -114,7 +115,7 @@ export class EmailService {
 
   async queueNotification(
     userId: string,
-    templateType: 'pricing_alert' | 'feature_alert' | 'weekly_summary',
+    templateType: 'pricing_alert' | 'feature_alert' | 'weekly_summary' | 'instagram_scrape_complete',
     context: NotificationContext,
     priority: 1 | 2 | 3 = 1,
     scheduledFor?: Date
@@ -143,7 +144,8 @@ export class EmailService {
       }
 
       // Prepare template variables
-      const variables = {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
+      const variables: TemplateVariables = {
         userName: user.name || 'there',
         userEmail: user.email,
         competitorName: context.competitorName,
@@ -155,8 +157,20 @@ export class EmailService {
         competitiveAnalysis: context.competitiveAnalysis || '',
         pageUrl: context.pageUrl,
         pageType: context.pageType,
-        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/dashboard`,
-        viewChangeUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/dashboard/changes?changeId=${context.changeId}`
+        dashboardUrl: `${baseUrl}/dashboard`,
+        viewChangeUrl: `${baseUrl}/dashboard/changes?changeId=${context.changeId}`,
+        // Instagram-specific variables
+        handle: context.handle || '',
+        postCount: context.postCount || 0,
+        scrapedAt: context.scrapedAt || new Date().toLocaleString(),
+        companyName: context.competitorName,
+        viewProfileUrl: `${baseUrl}/dashboard/social-profiles/${context.profileId || ''}`,
+        companyUrl: `${baseUrl}/dashboard/companies/${context.companyId || ''}`,
+        settingsUrl: `${baseUrl}/dashboard/settings/social-profiles`,
+        // Include any additional context variables
+        ...Object.fromEntries(
+          Object.entries(context).filter(([key]) => !['userId', 'changeId', 'competitorName', 'changeType', 'changeSummary', 'impactLevel', 'oldValue', 'newValue', 'competitiveAnalysis', 'pageUrl', 'pageType'].includes(key))
+        )
       }
 
       // Process templates
@@ -318,10 +332,50 @@ export class EmailService {
   private processTemplate(template: string, variables: TemplateVariables): string {
     let processed = template
 
-    // Replace template variables in format {{variableName}}
+    // Handle array iteration syntax {{#arrayName}}...{{/arrayName}}
     for (const [key, value] of Object.entries(variables)) {
-      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
-      processed = processed.replace(placeholder, String(value))
+      if (Array.isArray(value) && value.length > 0) {
+        // Process array blocks
+        const arrayRegex = new RegExp(`{{#${key}}}([\\s\\S]*?){{/${key}}}`, 'g')
+        processed = processed.replace(arrayRegex, (_match, content) => {
+          return value.map((item: any) => {
+            let itemContent = content
+            if (typeof item === 'object' && item !== null) {
+              // Replace item properties
+              for (const [propKey, propValue] of Object.entries(item)) {
+                const propPlaceholder = new RegExp(`{{\\s*${propKey}\\s*}}`, 'g')
+                itemContent = itemContent.replace(propPlaceholder, String(propValue || ''))
+              }
+            } else {
+              // Simple value in array
+              itemContent = itemContent.replace(/{{\.}}/g, String(item))
+            }
+            return itemContent
+          }).join('')
+        })
+      } else if (Array.isArray(value) && value.length === 0) {
+        // Remove array blocks for empty arrays
+        const arrayRegex = new RegExp(`{{#${key}}}[\\s\\S]*?{{/${key}}}`, 'g')
+        processed = processed.replace(arrayRegex, '')
+      }
+    }
+
+    // Handle inverse/empty checks {{^arrayName}}...{{/arrayName}}
+    for (const [key, value] of Object.entries(variables)) {
+      const inverseRegex = new RegExp(`{{\\^${key}}}([\\s\\S]*?){{/${key}}}`, 'g')
+      if (Array.isArray(value) && value.length === 0) {
+        processed = processed.replace(inverseRegex, '$1')
+      } else {
+        processed = processed.replace(inverseRegex, '')
+      }
+    }
+
+    // Replace simple template variables in format {{variableName}}
+    for (const [key, value] of Object.entries(variables)) {
+      if (!Array.isArray(value)) {
+        const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
+        processed = processed.replace(placeholder, String(value || ''))
+      }
     }
 
     // Clean up any remaining unreplaced variables
