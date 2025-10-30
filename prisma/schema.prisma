@@ -38,12 +38,13 @@ model Company {
   userId        String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pages         MonitoredPage[]
-  changes       SaasChange[]
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages          MonitoredPage[]
+  changes        SaasChange[]
   socialProfiles SocialProfile[]
-  
+  socialChanges  SocialChange[]
+
   @@map("companies")
 }
 
@@ -227,6 +228,7 @@ model SocialProfile {
 
   company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   snapshots   SocialSnapshot[]
+  changes     SocialChange[]
 
   @@unique([companyId, platform])
   @@map("social_profiles")
@@ -244,7 +246,49 @@ model SocialSnapshot {
   notes      String?
 
   profile    SocialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  changes    SocialChange[]
 
   @@index([profileId, capturedAt])
   @@map("social_snapshots")
+}
+
+model SocialChange {
+  id              String   @id @default(cuid())
+  companyId       String
+  profileId       String
+  snapshotId      String?
+  runId           String?
+  changeType      String   // bio_update, follower_milestone, engagement_change, profile_pic_change, posts_update
+  changeSummary   String   // specific, actionable summary under 80 chars
+  oldValue        String?
+  newValue        String?
+  impactLevel     String   // high, medium, low
+  confidence      String   // high, medium, low
+  competitiveAnalysis String?
+  detectedAt      DateTime @default(now())
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  profile         SocialProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  snapshot        SocialSnapshot? @relation(fields: [snapshotId], references: [id], onDelete: SetNull)
+  detectionRun    SocialDetectionRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, detectedAt])
+  @@index([profileId, detectedAt])
+  @@map("social_changes")
+}
+
+model SocialDetectionRun {
+  id              String   @id @default(cuid())
+  runType         String   // scheduled, manual, test
+  status          String   // pending, running, completed, failed
+  startTime       DateTime @default(now())
+  endTime         DateTime?
+  errorMessage    String?
+  profilesScraped Int      @default(0)
+  changesFound    Int      @default(0)
+  metadata        Json?    // Store run configuration and results
+
+  changes         SocialChange[]
+
+  @@map("social_detection_runs")
 }

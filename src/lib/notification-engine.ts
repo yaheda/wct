@@ -258,6 +258,13 @@ export class NotificationEngine {
       case 'product':
       case 'integration':
         return 'feature_alert'
+      // Social change types
+      case 'bio_update':
+      case 'follower_milestone':
+      case 'engagement_change':
+      case 'profile_pic_change':
+      case 'posts_update':
+        return 'feature_alert' // Treat social changes as feature alerts
       default:
         return 'feature_alert' // Default to feature alert for other changes
     }
