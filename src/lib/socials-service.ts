@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { InstagramScraper } from './instagram-scraper'
+import { emailService } from './email-service'
 
 const db = new PrismaClient()
 
@@ -89,7 +90,7 @@ class SocialsDetectionService {
               results.summary.errors++
               continue
             }
-            const result = await this.instagramScraper.scrapeInstagramProfile(profile.handle)
+            const result = await this.instagramScraper.scrapeInstagramProfile(profile.handle, profile.lastChecked)
             if (!result.success) {
               results.errors.push(`Failed to scrape Instagram ${profile.handle}: ${result.error}`)
               results.summary.errors++
@@ -116,9 +117,56 @@ class SocialsDetectionService {
                 metrics: this.extractMetrics(scrapedData) as any
               }
             })
+
+            // Queue email notification for successful scrape
+            try {
+              // Get company owner for notification
+              const company = await db.company.findUnique({
+                where: { id: profile.companyId },
+                include: { user: true }
+              })
+
+              if (company && company.user) {
+                // Extract latest posts for email
+                const posts = scrapedData.posts as Array<{ caption?: string; commentsCount?: number; comments?: string[] }> || []
+                const latestPosts = posts.slice(0, 5).map(post => ({
+                  caption: post.caption || '',
+                  commentsCount: post.commentsCount || 0,
+                  comments: post.comments || []
+                }))
+
+                // Queue the notification
+                await emailService.queueNotification(
+                  company.userId,
+                  'instagram_scrape_complete',
+                  {
+                    userId: company.userId,
+                    competitorName: company.name,
+                    changeType: 'social_scrape',
+                    changeSummary: `Successfully scraped ${scrapedCount} posts from ${profile.platform}`,
+                    impactLevel: 'medium',
+                    pageUrl: profile.url || `https://${profile.platform}.com/${profile.handle}`,
+                    pageType: profile.platform,
+                    handle: profile.handle,
+                    postCount: scrapedCount,
+                    scrapedAt: new Date().toLocaleString(),
+                    profileId: profile.id,
+                    companyId: profile.companyId,
+                    latestPosts
+                  },
+                  2 // Medium priority
+                )
+
+                console.log(`Queued notification for ${profile.handle} scrape completion`)
+              }
+            } catch (notificationError) {
+              // Log but don't fail the scrape if notification fails
+              console.error(`Failed to queue notification for ${profile.handle}:`, notificationError)
+              results.errors.push(`Notification failed for ${profile.handle}: ${notificationError instanceof Error ? notificationError.message : 'Unknown error'}`)
+            }
           }
 
-          
+
 
           results.summary.profilesScraped++
           results.summary.changesFound += scrapedCount

@@ -28,7 +28,7 @@ export class InstagramScraper {
     });
   }
 
-  async scrapeInstagramProfile(username: string): Promise<InstagramScrapingResult> {
+  async scrapeInstagramProfile(username: string, onlyPostsNewerThan: Date | null = null): Promise<InstagramScrapingResult> {
     try {
       const input = {
         //usernames: [username],
@@ -37,7 +37,8 @@ export class InstagramScraper {
         ],
         resultsType: "posts",
         resultsLimit: 10,
-        addParentData: false
+        addParentData: false,
+        onlyPostsNewerThan: onlyPostsNewerThan ? onlyPostsNewerThan.toISOString() : undefined
       };
 
       const run = await this.client.actor('apify/instagram-scraper').call(input);
