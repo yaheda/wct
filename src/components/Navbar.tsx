@@ -39,7 +39,7 @@ export function Navbar() {
                 Join Waitlist
               </Button>
             </div>
-
+          </>)}
             <div className="flex items-center space-x-4">
               {!isSignedIn ? (
                 <>
@@ -48,11 +48,11 @@ export function Navbar() {
                       Login
                     </Button>
                   </SignInButton>
-                  <SignUpButton mode="modal">
+                  {/* <SignUpButton mode="modal">
                     <Button size="sm">
                       Join up
                     </Button> 
-                  </SignUpButton>
+                  </SignUpButton> */}
                 </>
               ) : (
                 <>
@@ -71,7 +71,7 @@ export function Navbar() {
                 </>
               )}
             </div>
-            </>)}
+            
         </div>
       </div>
 
