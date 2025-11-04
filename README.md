@@ -2,6 +2,8 @@
 
 A comprehensive SaaS competitive intelligence platform for monitoring competitor websites and social media, built with Next.js 15, TypeScript, Tailwind CSS, and AI-powered change detection.
 
+https://simplecompetitoranalysis.com/
+
 ![Landing](./screenshots/landing.png)
 ![Dashboard](./screenshots/dashboard.png)
 ![Changes](./screenshots/changes.png)
