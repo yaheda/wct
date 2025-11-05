@@ -49,7 +49,8 @@ export class EmailService {
         from: options.from || this.fromEmail,
         to: options.to,
         subject: options.subject,
-        html: options.html,
+        //html: options.html,
+        html: "",
         text: options.text
       })
 
