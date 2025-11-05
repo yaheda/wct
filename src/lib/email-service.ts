@@ -341,10 +341,50 @@ export class EmailService {
           return value.map((item: any) => {
             let itemContent = content
             if (typeof item === 'object' && item !== null) {
-              // Replace item properties
+              // First, recursively process nested arrays within this item
               for (const [propKey, propValue] of Object.entries(item)) {
-                const propPlaceholder = new RegExp(`{{\\s*${propKey}\\s*}}`, 'g')
-                itemContent = itemContent.replace(propPlaceholder, String(propValue || ''))
+                if (Array.isArray(propValue)) {
+                  // Handle nested array blocks
+                  if (propValue.length > 0) {
+                    const nestedArrayRegex = new RegExp(`{{#${propKey}}}([\\s\\S]*?){{/${propKey}}}`, 'g')
+                    itemContent = itemContent.replace(nestedArrayRegex, (_nestedMatch: string, nestedContent: string) => {
+                      return propValue.map((nestedItem: any) => {
+                        let nestedItemContent = nestedContent
+                        if (typeof nestedItem === 'object' && nestedItem !== null) {
+                          // Replace nested item properties
+                          for (const [nestedPropKey, nestedPropValue] of Object.entries(nestedItem)) {
+                            const nestedPropPlaceholder = new RegExp(`{{\\s*${nestedPropKey}\\s*}}`, 'g')
+                            nestedItemContent = nestedItemContent.replace(nestedPropPlaceholder, String(nestedPropValue || ''))
+                          }
+                        } else {
+                          // Simple value in nested array
+                          nestedItemContent = nestedItemContent.replace(/{{\.}}/g, String(nestedItem))
+                        }
+                        return nestedItemContent
+                      }).join('')
+                    })
+                  } else {
+                    // Remove nested array blocks for empty arrays
+                    const nestedArrayRegex = new RegExp(`{{#${propKey}}}[\\s\\S]*?{{/${propKey}}}`, 'g')
+                    itemContent = itemContent.replace(nestedArrayRegex, '')
+                  }
+
+                  // Handle nested inverse/empty checks
+                  const nestedInverseRegex = new RegExp(`{{\\^${propKey}}}([\\s\\S]*?){{/${propKey}}}`, 'g')
+                  if (propValue.length === 0) {
+                    itemContent = itemContent.replace(nestedInverseRegex, '$1')
+                  } else {
+                    itemContent = itemContent.replace(nestedInverseRegex, '')
+                  }
+                }
+              }
+
+              // Then replace simple item properties (non-arrays)
+              for (const [propKey, propValue] of Object.entries(item)) {
+                if (!Array.isArray(propValue)) {
+                  const propPlaceholder = new RegExp(`{{\\s*${propKey}\\s*}}`, 'g')
+                  itemContent = itemContent.replace(propPlaceholder, String(propValue || ''))
+                }
               }
             } else {
               // Simple value in array

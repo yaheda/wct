@@ -128,11 +128,11 @@ class SocialsDetectionService {
 
               if (company && company.user) {
                 // Extract latest posts for email
-                const posts = scrapedData.posts as Array<{ caption?: string; commentsCount?: number; comments?: string[] }> || []
+                const posts = scrapedData.posts as Array<{ caption?: string; commentsCount?: number; comments?: string[], latestComments?: string[] }> || []
                 const latestPosts = posts.slice(0, 5).map(post => ({
                   caption: post.caption || '',
                   commentsCount: post.commentsCount || 0,
-                  comments: post.comments || []
+                  comments: post.latestComments || [] //post.comments || []
                 }))
 
                 // Queue the notification
