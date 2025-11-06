@@ -403,7 +403,7 @@ Manage notification preferences: {{dashboardUrl}}/settings/notifications
 </html>
     `,
     textContent: `
-📸 INSTAGRAM PROFILE SCRAPED SUCCESSFULLY
+📸 INSTAGRAM PROFILE SCRAPED SUCCESSFULLY - test1213
 
 Hi {{userName}},
 

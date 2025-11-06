@@ -199,17 +199,17 @@ model Notification {
   id                String   @id @default(cuid())
   userId            String
   changeId          String?
-  templateId        String
+  templateId        String?
   notificationType  String   // immediate_pricing, feature_announcements, weekly_summary
   status            String   @default("sent") // sent, failed
   sentAt            DateTime @default(now())
   readAt            DateTime?
   clickedAt         DateTime?
   metadata          Json?    // Email content, links, etc.
-  
+
   user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   change            SaasChange?  @relation(fields: [changeId], references: [id], onDelete: SetNull)
-  template          EmailTemplate @relation(fields: [templateId], references: [id])
+  template          EmailTemplate? @relation(fields: [templateId], references: [id])
   
   @@index([userId, sentAt])
   @@map("notifications")
