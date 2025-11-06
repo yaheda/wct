@@ -170,7 +170,7 @@ model NotificationQueue {
   id                String   @id @default(cuid())
   userId            String
   changeId          String?
-  templateId        String
+  templateId        String?
   recipientEmail    String
   subject           String
   htmlContent       String
@@ -185,11 +185,11 @@ model NotificationQueue {
   metadata          Json?    // Additional context data
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  
+
   user              User         @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
   change            SaasChange?  @relation(fields: [changeId], references: [id], onDelete: SetNull)
-  template          EmailTemplate @relation(fields: [templateId], references: [id])
-  
+  template          EmailTemplate? @relation(fields: [templateId], references: [id])
+
   @@index([status, scheduledFor])
   @@index([userId, status])
   @@map("notification_queue")

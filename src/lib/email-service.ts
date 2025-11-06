@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { PrismaClient } from '@prisma/client'
+import { emailTemplates } from './email-templates'
 
 const db = new PrismaClient()
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -79,18 +80,16 @@ export class EmailService {
   }
 
   async sendTemplatedEmail(
-    templateId: string, 
-    recipientEmail: string, 
+    templateType: 'pricing_alert' | 'feature_alert' | 'weekly_summary' | 'instagram_scrape_complete',
+    recipientEmail: string,
     variables: TemplateVariables
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
-      // Get template from database
-      const template = await db.emailTemplate.findUnique({
-        where: { id: templateId, isActive: true }
-      })
+      // Get template from code
+      const template = emailTemplates[templateType]
 
       if (!template) {
-        return { success: false, error: 'Template not found or inactive' }
+        return { success: false, error: 'Template not found' }
       }
 
       // Replace variables in template
@@ -107,9 +106,9 @@ export class EmailService {
 
     } catch (error) {
       console.error('Templated email error:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
   }
@@ -132,13 +131,8 @@ export class EmailService {
         return { success: false, error: 'User not found' }
       }
 
-      // Get appropriate template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          templateType,
-          isActive: true 
-        }
-      })
+      // Get appropriate template from code
+      const template = emailTemplates[templateType]
 
       if (!template) {
         return { success: false, error: `Template not found for type: ${templateType}` }
@@ -184,7 +178,7 @@ export class EmailService {
         data: {
           userId,
           changeId: context.changeId,
-          templateId: template.id,
+          templateId: null, // Using code-based templates
           recipientEmail: user.email,
           subject: processedSubject,
           htmlContent: processedHtml,
