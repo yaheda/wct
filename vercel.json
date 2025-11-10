@@ -8,6 +8,6 @@
   "installCommand": "npm install",
   "crons": [{
     "path": "/api/hello",
-    "schedule": "* * * * *"
+    "schedule": "0 1 * * *"
   }]
 }
