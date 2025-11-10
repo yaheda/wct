@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "github": {
+    "enabled": true,
+    "autoAlias": true
+  },
+  "buildCommand": "npm run build",
+  "installCommand": "npm install"
+}
