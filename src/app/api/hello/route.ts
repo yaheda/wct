@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     return NextResponse.json(
-      { message: 'Hello, World!' },
+      { message: 'Hello, World ! It is working.' },
       { status: 200 }
     );
   } catch (error) {
